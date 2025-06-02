@@ -64,7 +64,6 @@ class UINativeVideoPlayerViewController: AVPlayerViewController {
 
     private var rateObserver: NSKeyValueObservation!
     private var timeObserverToken: Any!
-
     init(manager: VideoPlayerManager) {
 
         self.videoPlayerManager = manager

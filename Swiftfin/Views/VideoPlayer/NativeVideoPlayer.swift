@@ -103,6 +103,7 @@ class UINativeVideoPlayerViewController: AVPlayerViewController {
     private var avPlayerAudioSelectionGroup: AVMediaSelectionGroup?
     private var cancellables = Set<AnyCancellable>()
     private var currentPlaybackURL: URL? // Stores the URL of the currently loaded player item
+    private let atmosResourceLoaderDelegate = AtmosManifestResourceLoaderDelegate() // Retain the delegate
 
     init(manager: VideoPlayerManager) {
         self.videoPlayerManager = manager
@@ -232,8 +233,26 @@ class UINativeVideoPlayerViewController: AVPlayerViewController {
 
         self.showsPlaybackControls = false // This is an AVPlayerViewController property
 
-        let newPlayer = AVPlayer(url: viewModel.hlsPlaybackURL)
-        self.currentPlaybackURL = viewModel.hlsPlaybackURL // Store the URL for this player instance
+        let originalPlaybackURL = viewModel.hlsPlaybackURL // Assuming hlsPlaybackURL is non-optional URL
+        let playerItem: AVPlayerItem
+
+        if let customURL = AtmosManifestResourceLoaderDelegate.customURL(from: originalPlaybackURL) {
+            print("[NativePlayer] Using custom URL for Atmos interceptor: \(customURL.absoluteString)")
+            let asset = AVURLAsset(url: customURL)
+            // Set the master playlist URL on the delegate
+            atmosResourceLoaderDelegate.masterPlaylistOriginalURL = originalPlaybackURL
+            asset.resourceLoader.setDelegate(atmosResourceLoaderDelegate, queue: DispatchQueue.main)
+            playerItem = AVPlayerItem(asset: asset)
+        } else {
+            print(
+                "[NativePlayer] Error: Could not create custom URL for Atmos playback from URL: \(originalPlaybackURL.absoluteString). Falling back to direct playback."
+            )
+            let asset = AVURLAsset(url: originalPlaybackURL)
+            playerItem = AVPlayerItem(asset: asset)
+        }
+
+        let newPlayer = AVPlayer(playerItem: playerItem)
+        self.currentPlaybackURL = originalPlaybackURL // Store the original URL for comparison logic
 
         newPlayer.allowsExternalPlayback = true
         newPlayer.appliesMediaSelectionCriteriaAutomatically = false // We handle selection

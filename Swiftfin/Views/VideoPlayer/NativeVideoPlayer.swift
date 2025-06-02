@@ -268,7 +268,7 @@ class UINativeVideoPlayerViewController: AVPlayerViewController {
                 self.loadAndReportPlayerAudioOptions() // Load audio options from the new item
                 self.applyQualityLevelPreferences(self.videoPlayerManager.selectedQualityLevel)
                 if #available(iOS 15.0, *) {
-                    playerItem.allowedAudioSpatializationFormats = .monoStereoAndMultichannel
+                    playerItem.allowedAudioSpatializationFormats = .all
                 }
                 // Log track details (as before)
                 print("[AVPlayerItem Track Details]")
@@ -314,16 +314,42 @@ class UINativeVideoPlayerViewController: AVPlayerViewController {
                                     let asbd = CMAudioFormatDescriptionGetStreamBasicDescription(formatDesc)
                                     if let asbdPtr = asbd {
                                         let formatID = asbdPtr.pointee.mFormatID
+                                        let formatIDString = self.fourCharCodeToString(formatID)
                                         let formatIDHex = String(format: "0x%08x", formatID)
                                         print("        MediaType: Audio")
-                                        print("        Format ID: \(formatIDHex) ('\(self.fourCharCodeToString(formatID))')")
-                                        print("        Channels Per Frame: \(asbdPtr.pointee.mChannelsPerFrame)")
-                                        if let layoutPtr = CMAudioFormatDescriptionGetChannelLayout(formatDesc, sizeOut: nil) {
-                                            print(
-                                                "        Channel Layout Tag: \(layoutPtr.pointee.mChannelLayoutTag) (\(String(format: "0x%08x", layoutPtr.pointee.mChannelLayoutTag)))"
-                                            )
+                                        print("        [Detailed Audio Format] mFormatID: \(formatIDHex) ('\(formatIDString)')")
+                                        print("        [Detailed Audio Format] mChannelsPerFrame: \(asbdPtr.pointee.mChannelsPerFrame)")
+
+                                        var layoutSize: Int = 0
+                                        if let layoutPtr = CMAudioFormatDescriptionGetChannelLayout(formatDesc, sizeOut: &layoutSize) {
+                                            let layout = layoutPtr.pointee
+                                            print("        [Detailed Audio Format] AudioChannelLayoutTag: \(layout.mChannelLayoutTag) (\(String(format: "0x%08x", layout.mChannelLayoutTag)))")
+                                            print("        [Detailed Audio Format] AudioChannelBitmap: \(layout.mChannelBitmap.rawValue)")
+                                            print("        [Detailed Audio Format] NumberChannelDescriptions: \(layout.mNumberChannelDescriptions)")
+
+                                            if layout.mNumberChannelDescriptions > 0 {
+                                                print("        [Detailed Audio Format] Channel Descriptions:")
+                                                // Accessing mChannelDescriptions directly requires careful pointer arithmetic
+                                                // to iterate through the variable-length array.
+                                                // The AudioChannelLayout struct itself doesn't directly expose it as a Swift array.
+                                                // We need to iterate from the memory location of mChannelDescriptions.
+                                                // See https://developer.apple.com/documentation/coreaudiotypes/audiochannellayout
+                                                // "The mChannelDescriptions field is a variable length array of AudioChannelDescription structs."
+
+                                                // Create a pointer to the first AudioChannelDescription
+                                                let descriptionsPtr = UnsafeRawPointer(layoutPtr) + MemoryLayout<AudioChannelLayout>.offset(of: \AudioChannelLayout.mChannelDescriptions)!
+                                                                                                
+                                                // Bind the raw pointer to AudioChannelDescription type and iterate
+                                                let channelDescriptions = descriptionsPtr.assumingMemoryBound(to: AudioChannelDescription.self)
+                                                for i in 0..<Int(layout.mNumberChannelDescriptions) {
+                                                    let channelDesc = channelDescriptions[i]
+                                                    print("          Channel \(i + 1):")
+                                                    print("            mChannelLabel: \(channelDesc.mChannelLabel) (\(String(format: "0x%08x", channelDesc.mChannelLabel)))")
+                                                    print("            mChannelFlags: \(channelDesc.mChannelFlags.rawValue)")
+                                                }
+                                            }
                                         } else {
-                                            print("        Channel Layout Tag: N/A")
+                                            print("        [Detailed Audio Format] AudioChannelLayout: Not available (CMAudioFormatDescriptionGetChannelLayout returned nil or size 0)")
                                         }
                                     } else {
                                         print("        Could not get ASBD for audio format description.")

@@ -22,12 +22,18 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
 
-        // let audioSession = AVAudioSession.sharedInstance()
-        // do {
-        //     try audioSession.setCategory(.playback)
-        // } catch {
-        //     print("setting category AVAudioSessionCategoryPlayback failed")
-        // }
+        let audioSession = AVAudioSession.sharedInstance()
+        do {
+            try audioSession.setCategory(.playback, mode: .moviePlayback)
+        } catch {
+            print("Setting category to AVAudioSession.Category.playback and mode to AVAudioSession.Mode.moviePlayback failed: \(error)")
+        }
+
+        do {
+            try audioSession.setSupportsMultichannelContent(true)
+        } catch {
+            print("Setting setSupportsMultichannelContent to true failed: \(error)")
+        }
 
         true
     }

@@ -22,22 +22,24 @@ struct IOSAudioSelectionMenuView: View { // Renamed struct
                     .font(.headline)
                     .padding([.top, .leading, .trailing])
 
-                if videoPlayerManager.availableAudioTracks.isEmpty {
+                if videoPlayerManager.availablePlayerAudioOptions.isEmpty {
                     Text("No audio tracks available.")
                         .foregroundColor(.gray)
                         .padding()
                 } else {
                     List { // Use List for iOS style
-                        ForEach(videoPlayerManager.availableAudioTracks, id: \.self) { track in
+                        ForEach(videoPlayerManager.availablePlayerAudioOptions, id: \.self) { option in
                             Button(action: {
-                                videoPlayerManager.selectAudioTrack(track)
+                                videoPlayerManager.selectPlayerAudioOption(option)
                                 isPresented = false
                             }) {
                                 HStack {
-                                    Text(track.displayName)
-                                        .foregroundColor(videoPlayerManager.selectedAudioTrack == track ? .accentColor : .primary)
+                                    // Using option.displayName directly.
+                                    // Consider using option.extendedLanguageTag for more info if needed.
+                                    Text(option.displayName + (option.extendedLanguageTag != nil ? " (\(option.extendedLanguageTag!))" : ""))
+                                        .foregroundColor(videoPlayerManager.selectedPlayerAudioOption == option ? .accentColor : .primary)
                                     Spacer()
-                                    if videoPlayerManager.selectedAudioTrack == track {
+                                    if videoPlayerManager.selectedPlayerAudioOption == option {
                                         Image(systemName: "checkmark")
                                             .foregroundColor(.accentColor)
                                     }
@@ -47,7 +49,7 @@ struct IOSAudioSelectionMenuView: View { // Renamed struct
                     }
                 }
             }
-            .navigationTitle("Audio Tracks")
+            .navigationTitle("Audio Options") // Changed title to reflect AVPlayer options
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {

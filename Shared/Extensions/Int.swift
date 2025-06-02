@@ -27,6 +27,24 @@ extension FixedWidthInteger {
 }
 
 extension Int {
+    /// Converts seconds into a time label string (e.g., "01:23:45" or "23:45") using DateComponentsFormatter.
+    var timeLabel: String {
+        let formatter = DateComponentsFormatter()
+        formatter.allowedUnits = [.hour, .minute, .second]
+        formatter.unitsStyle = .positional
+
+        let totalSeconds = TimeInterval(self)
+        let hours = Int(totalSeconds) / 3600
+
+        if hours > 0 {
+            formatter.allowedUnits = [.hour, .minute, .second]
+        } else {
+            formatter.allowedUnits = [.minute, .second]
+        }
+        formatter.zeroFormattingBehavior = .pad
+
+        return formatter.string(from: totalSeconds) ?? "00:00"
+    }
 
     /// Label if the current value represents milliseconds
     var millisecondLabel: String {

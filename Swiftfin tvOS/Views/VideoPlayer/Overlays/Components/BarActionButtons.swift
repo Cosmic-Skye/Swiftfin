@@ -18,8 +18,17 @@ extension VideoPlayer.Overlay {
         @Binding
         private var currentOverlayType
 
+        // Bindings to control presentation of new menus
+        @Binding
+        var isPresentingAudioMenu: Bool
+        @Binding
+        var isPresentingQualityMenu: Bool
+
         @EnvironmentObject
         private var viewModel: VideoPlayerViewModel
+        // Access to LiveVideoPlayerManager to check if options are available
+        @EnvironmentObject
+        var videoPlayerManager: LiveVideoPlayerManager
 
         @ViewBuilder
         private var autoPlayButton: some View {
@@ -61,6 +70,34 @@ extension VideoPlayer.Overlay {
             .frame(maxWidth: 30, maxHeight: 30)
         }
 
+        @ViewBuilder
+        private var audioTracksButton: some View {
+            if !videoPlayerManager.availableAudioTracks.isEmpty {
+                SFSymbolButton(
+                    systemName: "speaker.wave.2.circle",
+                    systemNameFocused: "speaker.wave.2.circle.fill"
+                )
+                .onSelect {
+                    isPresentingAudioMenu = true
+                }
+                .frame(maxWidth: 30, maxHeight: 30)
+            }
+        }
+
+        @ViewBuilder
+        private var videoQualityButton: some View {
+            // Assuming quality levels are always available (at least "Auto")
+            // Add a check if !videoPlayerManager.availableQualityLevels.isEmpty if that can happen
+            SFSymbolButton(
+                systemName: "dial.low", // Using dial.low, could be others like "slider.horizontal.3" or "gearshape"
+                systemNameFocused: "dial.low.fill"
+            )
+            .onSelect {
+                isPresentingQualityMenu = true
+            }
+            .frame(maxWidth: 30, maxHeight: 30)
+        }
+
         var body: some View {
             HStack {
                 playPreviousItemButton
@@ -68,6 +105,10 @@ extension VideoPlayer.Overlay {
                 playNextItemButton
 
                 autoPlayButton
+
+                audioTracksButton // Added audio tracks button
+
+                videoQualityButton // Added video quality button
 
                 chaptersButton
 

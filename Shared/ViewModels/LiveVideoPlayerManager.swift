@@ -6,6 +6,8 @@
 // Copyright (c) 2025 Jellyfin & Jellyfin Contributors
 //
 
+import AVFoundation // For AVMediaSelectionOption, AVMediaSelectionGroup
+import Combine // For PassthroughSubject
 import Foundation
 import JellyfinAPI
 
@@ -18,9 +20,16 @@ final class LiveVideoPlayerManager: VideoPlayerManager {
     @Published
     var program: ChannelProgram?
 
+    // Note: AVPlayer audio/quality selection properties and methods are now in the base VideoPlayerManager.
+    // LiveVideoPlayerManager can still override or extend them if tvOS-specific behavior is needed
+    // beyond what the base class provides for AVPlayer.
+
+    // Initializers remain to handle specific setup for live video if necessary,
+    // but they no longer need to call setupQualityLevels() as the base init() does it.
+
     init(item: BaseItemDto, mediaSource: MediaSourceInfo, program: ChannelProgram? = nil) {
         self.program = program
-        super.init()
+        super.init() // Calls base init which now includes setupQualityLevels()
 
         Task {
             let viewModel = try await item.liveVideoPlayerViewModel(with: mediaSource, logger: logger)
@@ -31,9 +40,11 @@ final class LiveVideoPlayerManager: VideoPlayerManager {
         }
     }
 
-    init(program: BaseItemDto) {
+    init(program: BaseItemDto) { // Changed from convenience to designated if no other designated init
+        // If this class has no other designated initializers, this becomes one.
+        // Or, ensure it calls a designated initializer of this class if one exists.
+        // For now, assuming it can call super.init() directly after setting its own properties.
         super.init()
-
         Task {
             guard let channel = try? await self.getChannel(for: program), let mediaSource = channel.mediaSources?.first else {
                 assertionFailure("No channel for program?")
@@ -62,4 +73,8 @@ final class LiveVideoPlayerManager: VideoPlayerManager {
 
         return response.value.items?.first
     }
+
+    // MARK: - Public Methods for Audio Track Management are now in base class
+
+    // MARK: - Public Methods for Video Quality Management are now in base class
 }

@@ -35,15 +35,46 @@ struct LiveNativeVideoPlayer: View {
     var body: some View {
         Group {
             ZStack {
-                if let _ = videoPlayerManager.currentViewModel {
+                if videoPlayerManager.currentViewModel != nil {
                     playerView
+                        .onTapGesture { // Allow tapping on the player to toggle overlay
+                            isPresentingOverlay.toggle()
+                        }
                 } else {
                     VideoPlayer.LoadingView()
+                }
+
+                if isPresentingOverlay && videoPlayerManager.currentViewModel != nil {
+                    LiveVideoPlayer.LiveMainOverlay()
+                        // Environment objects needed by LiveMainOverlay and its children:
+                        // - videoPlayerManager (already an @ObservedObject here, can be passed as @EnvironmentObject)
+                        // - currentProgressHandler (from videoPlayerManager)
+                        // - overlayTimer (needs to be provided by parent or initialized here if local to player)
+                        // - viewModel (currentViewModel from videoPlayerManager)
+                        // Assuming overlayTimer is managed by a coordinator or higher-level view.
+                        // For now, we ensure the essential ones are passed.
+                            .environmentObject(videoPlayerManager)
+                            .environmentObject(videoPlayerManager.currentProgressHandler)
+                            .environmentObject(videoPlayerManager
+                                .currentViewModel!
+                            ) // currentViewModel is not nil here due to the if condition
+                            // .environmentObject(overlayTimer) // This needs to be provided from where LiveNativeVideoPlayer is used
+                            // For the overlay to dismiss on its own, an overlayTimer is typically used.
+                            // This timer would be managed by the LiveVideoPlayerCoordinator or similar.
+                            // We also need to pass the bindings for overlay control.
+                            .environment(\.isPresentingOverlay, $isPresentingOverlay)
+                    // .environment(\.currentOverlayType, $someStateForOverlayType) // If LiveMainOverlay uses this
+                    // .environment(\.isScrubbing, $someScrubbingState) // If LiveMainOverlay uses this
                 }
             }
         }
         .navigationBarHidden(true)
         .ignoresSafeArea()
+        .onAppear {
+            // Optionally, present the overlay by default when the view appears
+            // isPresentingOverlay = true
+            // Or, more commonly, the overlay appears on user interaction (tap)
+        }
     }
 }
 
@@ -64,6 +95,9 @@ class UILiveNativeVideoPlayerViewController: AVPlayerViewController {
 
     private var rateObserver: NSKeyValueObservation!
     private var timeObserverToken: Any!
+    private var itemStatusObserver: NSKeyValueObservation?
+    private var audioSelectionGroup: AVMediaSelectionGroup?
+    private var cancellables = Set<AnyCancellable>() // For Combine subscriptions
 
     init(manager: VideoPlayerManager) {
 
@@ -71,11 +105,19 @@ class UILiveNativeVideoPlayerViewController: AVPlayerViewController {
 
         super.init(nibName: nil, bundle: nil)
 
+        // Hide default AVPlayerViewController controls
+        self.showsPlaybackControls = false
+
         let newPlayer: AVPlayer = .init(url: manager.currentViewModel.hlsPlaybackURL)
 
         newPlayer.allowsExternalPlayback = true
         newPlayer.appliesMediaSelectionCriteriaAutomatically = false
         newPlayer.currentItem?.externalMetadata = createMetadata()
+
+        if #available(tvOS 15.0, *) {
+            // Allow Dolby Atmos spatialization format
+            newPlayer.currentItem?.allowedAudioSpatializationFormats = .dolbyAtmos
+        }
 
         rateObserver = newPlayer.observe(\.rate, options: .new) { _, change in
             guard let newValue = change.newValue else { return }
@@ -104,7 +146,117 @@ class UILiveNativeVideoPlayerViewController: AVPlayerViewController {
             }
         }
 
+        itemStatusObserver = newPlayer.currentItem?.observe(\.status, options: [.new, .initial]) { [weak self] item, _ in
+            guard let self = self else { return }
+            if item.status == .readyToPlay {
+                self.loadAndReportAudioOptions()
+            }
+        }
+
         player = newPlayer
+
+        // Subscribe to audio selection actions from the manager
+        if let liveManager = manager as? LiveVideoPlayerManager {
+            liveManager.selectAudioOptionAction
+                .sink { [weak self] optionToSelect in
+                    self?.selectAudioOption(optionToSelect)
+                }
+                .store(in: &cancellables)
+
+            liveManager.selectQualityLevelAction
+                .sink { [weak self] qualityLevelToSelect in
+                    self?.applyQualityLevelPreferences(qualityLevelToSelect)
+                }
+                .store(in: &cancellables)
+        }
+    }
+
+    deinit {
+        cancellables.forEach { $0.cancel() }
+        itemStatusObserver?.invalidate()
+        // rateObserver is implicitly invalidated when newPlayer is deallocated if not done manually.
+        // timeObserverToken needs to be removed, which is done in viewWillDisappear.
+    }
+
+    // MARK: - Media Selection
+
+    private func loadAndReportAudioOptions() {
+        guard let item = player?.currentItem, let asset = item.asset as? AVURLAsset else {
+            print("Player item or asset not available for audio options.")
+            return
+        }
+
+        let audibleGroup = asset.mediaSelectionGroup(forMediaCharacteristic: .audible)
+        self.audioSelectionGroup = audibleGroup
+
+        guard let liveManager = self.videoPlayerManager as? LiveVideoPlayerManager else {
+            // print("LiveVideoPlayerManager not available for updating audio options.")
+            // It's possible this manager is not the Live one in some contexts, though unlikely for this VC.
+            return
+        }
+
+        if let group = audibleGroup {
+            let options = group.options
+            let currentSelection = item.selectedMediaOption(in: group)
+            liveManager.updateAudioOptions(options: options, group: group, selectedOption: currentSelection)
+
+            // For debugging:
+            // print("Available audio tracks reported to manager: \(options.map { $0.displayName })")
+            // if let currentSelection = currentSelection {
+            //     print("Currently selected audio track reported to manager: \(currentSelection.displayName)")
+            // }
+        } else {
+            // print("No audible media selection group found.")
+            liveManager.updateAudioOptions(options: [], group: nil, selectedOption: nil)
+        }
+    }
+
+    public func selectAudioOption(_ option: AVMediaSelectionOption) {
+        guard let item = player?.currentItem, let group = self.audioSelectionGroup else {
+            // print("Cannot select audio option: Player item or audio group not available.")
+            return
+        }
+
+        // Prevent re-selecting the same track if it's already selected,
+        // as select() might still trigger notifications or work.
+        if item.selectedMediaOption(in: group) == option {
+            // print("Audio option \(option.displayName) is already selected.")
+            // Still, we should ensure the manager is up-to-date.
+            if let liveManager = self.videoPlayerManager as? LiveVideoPlayerManager {
+                liveManager.updateAudioOptions(options: group.options, group: group, selectedOption: option)
+            }
+            return
+        }
+
+        item.select(option, in: group)
+        // print("Selected audio track via AVPlayer: \(option.displayName)")
+
+        // After selection, update the manager with the new state
+        if let liveManager = self.videoPlayerManager as? LiveVideoPlayerManager {
+            // Re-fetch current selection to be absolutely sure
+            let currentSelection = item.selectedMediaOption(in: group)
+            liveManager.updateAudioOptions(options: group.options, group: group, selectedOption: currentSelection)
+            // print("Manager updated with new audio selection: \(currentSelection?.displayName ?? "None")")
+        }
+    }
+
+    // MARK: - Video Quality Preference
+
+    private func applyQualityLevelPreferences(_ level: QualityLevel) {
+        guard let item = player?.currentItem else {
+            // print("Cannot apply quality preferences: Player item not available.")
+            return
+        }
+
+        item.preferredPeakBitRate = level.peakBitrate ?? 0 // 0 means no limit / auto
+
+        if let maxHeight = level.maxResolutionHeight {
+            item.preferredMaximumResolution = CGSize(width: -1, height: maxHeight) // -1 for width means unspecified
+        } else {
+            item.preferredMaximumResolution = .zero // .zero means no preference
+        }
+
+        // print("Applied quality preferences: Bitrate \(item.preferredPeakBitRate), Max Height \(item.preferredMaximumResolution.height)")
     }
 
     @available(*, unavailable)
@@ -120,8 +272,11 @@ class UILiveNativeVideoPlayerViewController: AVPlayerViewController {
         super.viewWillDisappear(animated)
 
         stop()
-        guard let timeObserverToken else { return }
-        player?.removeTimeObserver(timeObserverToken)
+        if let timeObserverToken = self.timeObserverToken {
+            player?.removeTimeObserver(timeObserverToken)
+            self.timeObserverToken = nil
+        }
+        itemStatusObserver?.invalidate() // Invalidate observer when view disappears
     }
 
     override func viewDidAppear(_ animated: Bool) {

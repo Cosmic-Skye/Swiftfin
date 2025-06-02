@@ -23,6 +23,12 @@ extension LiveVideoPlayer.Overlay {
         @Binding
         private var isScrubbing: Bool
 
+        // Bindings to pass to BarActionButtons
+        @Binding
+        var isPresentingAudioMenu: Bool
+        @Binding
+        var isPresentingQualityMenu: Bool
+
         @EnvironmentObject
         private var currentProgressHandler: LiveVideoPlayerManager.CurrentProgressHandler
         @EnvironmentObject
@@ -73,7 +79,13 @@ extension LiveVideoPlayer.Overlay {
 
                     Spacer()
 
-                    VideoPlayer.Overlay.BarActionButtons()
+                    VideoPlayer.Overlay.BarActionButtons(
+                        isPresentingAudioMenu: $isPresentingAudioMenu,
+                        isPresentingQualityMenu: $isPresentingQualityMenu
+                    )
+                    // Ensure BarActionButtons has videoPlayerManager in its environment
+                    // This is already provided to LiveBottomBarView via @EnvironmentObject
+                    // and will be inherited by BarActionButtons if it also declares it.
                 }
 
                 tvOSSliderView(value: $currentProgressHandler.scrubbedProgress)

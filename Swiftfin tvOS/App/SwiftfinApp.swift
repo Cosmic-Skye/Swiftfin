@@ -6,6 +6,7 @@
 // Copyright (c) 2025 Jellyfin & Jellyfin Contributors
 //
 
+import AVFoundation // Added for AVAudioSession
 import CoreStore
 import Defaults
 import Factory
@@ -19,6 +20,26 @@ import SwiftUI
 struct SwiftfinApp: App {
 
     init() {
+
+        // AVAudioSession Configuration
+        do {
+            let audioSession = AVAudioSession.sharedInstance()
+            // Configure for playback, allow AirPlay. .moviePlayback is a common mode.
+            // .spatialAudio mode could be used if the content is consistently spatial.
+            try audioSession.setCategory(.playback, mode: .moviePlayback, options: [.allowAirPlay])
+
+            if #available(tvOS 15.0, *) {
+                try audioSession.setSupportsMultichannelContent(true)
+                try audioSession.setPrefersSpatialAudio(true)
+            }
+
+            try audioSession.setActive(true)
+            // Consider adding logging here if a logger is accessible
+            // For example: logger.info("AVAudioSession configured for optimal playback.")
+        } catch {
+            // Handle errors appropriately, e.g., log them
+            print("Failed to configure AVAudioSession: \(error.localizedDescription)")
+        }
 
         // CoreStore
 

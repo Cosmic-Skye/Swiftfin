@@ -1251,6 +1251,12 @@
 		E1FE69AA28C29CC20021BC93 /* LandscapePosterProgressBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1FE69A928C29CC20021BC93 /* LandscapePosterProgressBar.swift */; };
 		E43918662AD5C8310045A18C /* OnScenePhaseChangedModifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = E43918652AD5C8310045A18C /* OnScenePhaseChangedModifier.swift */; };
 		E43918672AD5C8310045A18C /* OnScenePhaseChangedModifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = E43918652AD5C8310045A18C /* OnScenePhaseChangedModifier.swift */; };
+		E49A5FF52DED918500478725 /* QualityLevel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E49A5FF42DED918500478725 /* QualityLevel.swift */; };
+		E49A5FF62DED918500478725 /* QualityLevel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E49A5FF42DED918500478725 /* QualityLevel.swift */; };
+		E49A5FFD2DED980500478725 /* IOSQualitySelectionMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E49A5FFC2DED980500478725 /* IOSQualitySelectionMenuView.swift */; };
+		E49A5FFE2DED980500478725 /* IOSAudioSelectionMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E49A5FFB2DED980500478725 /* IOSAudioSelectionMenuView.swift */; };
+		E49A60012DED996600478725 /* IOSBarActionButtons.swift in Sources */ = {isa = PBXBuildFile; fileRef = E49A5FFF2DED996600478725 /* IOSBarActionButtons.swift */; };
+		E49A60022DED996600478725 /* IOSBottomBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E49A60002DED996600478725 /* IOSBottomBarView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -2137,6 +2143,11 @@
 		E1FE69A628C29B720021BC93 /* ProgressBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressBar.swift; sourceTree = "<group>"; };
 		E1FE69A928C29CC20021BC93 /* LandscapePosterProgressBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LandscapePosterProgressBar.swift; sourceTree = "<group>"; };
 		E43918652AD5C8310045A18C /* OnScenePhaseChangedModifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnScenePhaseChangedModifier.swift; sourceTree = "<group>"; };
+		E49A5FF42DED918500478725 /* QualityLevel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QualityLevel.swift; sourceTree = "<group>"; };
+		E49A5FFB2DED980500478725 /* IOSAudioSelectionMenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSAudioSelectionMenuView.swift; sourceTree = "<group>"; };
+		E49A5FFC2DED980500478725 /* IOSQualitySelectionMenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSQualitySelectionMenuView.swift; sourceTree = "<group>"; };
+		E49A5FFF2DED996600478725 /* IOSBarActionButtons.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSBarActionButtons.swift; sourceTree = "<group>"; };
+		E49A60002DED996600478725 /* IOSBottomBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSBottomBarView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -3409,6 +3420,7 @@
 		535870AB2669D8D300D05A09 /* Objects */ = {
 			isa = PBXGroup;
 			children = (
+				E49A5FF42DED918500478725 /* QualityLevel.swift */,
 				E1D4BF802719D22800A11E64 /* AppAppearance.swift */,
 				E1CB75742C80EAFA00217C76 /* ArrayBuilder.swift */,
 				E11562942C818CB2001D5DE4 /* BindingBox.swift */,
@@ -4376,6 +4388,10 @@
 		E11245B528D97EC200D8A977 /* Components */ = {
 			isa = PBXGroup;
 			children = (
+				E49A5FFF2DED996600478725 /* IOSBarActionButtons.swift */,
+				E49A60002DED996600478725 /* IOSBottomBarView.swift */,
+				E49A5FFB2DED980500478725 /* IOSAudioSelectionMenuView.swift */,
+				E49A5FFC2DED980500478725 /* IOSQualitySelectionMenuView.swift */,
 				E1BDF2ED2952296000CC0294 /* ActionButtons */,
 				E1E9017E28DAB15F001B1594 /* BarActionButtons.swift */,
 				E11245B328D97D5D00D8A977 /* BottomBarView.swift */,
@@ -6152,6 +6168,7 @@
 				E1DC981A296DD1CD00982F06 /* CinematicBackgroundView.swift in Sources */,
 				E1A1528B28FD22F600600579 /* TextPairView.swift in Sources */,
 				E11042762B8013DF00821020 /* Stateful.swift in Sources */,
+				E49A5FF52DED918500478725 /* QualityLevel.swift in Sources */,
 				091B5A8D268315D400D78B61 /* ServerDiscovery.swift in Sources */,
 				E1575E66293E77B5001665B1 /* Poster.swift in Sources */,
 				E18E021F2887492B0022598C /* SystemImageContentView.swift in Sources */,
@@ -6587,6 +6604,8 @@
 				E1DC9847296DEFF500982F06 /* FavoriteIndicator.swift in Sources */,
 				E1E306CD28EF6E8000537998 /* TimerProxy.swift in Sources */,
 				BD0BA22E2AD6508C00306A8D /* DownloadVideoPlayerManager.swift in Sources */,
+				E49A60012DED996600478725 /* IOSBarActionButtons.swift in Sources */,
+				E49A60022DED996600478725 /* IOSBottomBarView.swift in Sources */,
 				E18CE0B228A229E70092E7F1 /* UserDto.swift in Sources */,
 				E18E01F0288747230022598C /* AttributeHStack.swift in Sources */,
 				6334175B287DDFB9000603CE /* QuickConnectAuthorizeView.swift in Sources */,
@@ -6600,6 +6619,8 @@
 				4EE07CBB2D08B19700B0B636 /* ErrorMessage.swift in Sources */,
 				E11562952C818CB2001D5DE4 /* BindingBox.swift in Sources */,
 				4E16FD532C01840C00110147 /* LetterPickerBar.swift in Sources */,
+				E49A5FFD2DED980500478725 /* IOSQualitySelectionMenuView.swift in Sources */,
+				E49A5FFE2DED980500478725 /* IOSAudioSelectionMenuView.swift in Sources */,
 				4E2CE39F2DA4962A0004736A /* MediaItemSection.swift in Sources */,
 				4E31EFA12CFFFB1D0053DFE7 /* EditItemElementRow.swift in Sources */,
 				E1BE1CEA2BDB5AFE008176A9 /* UserGridButton.swift in Sources */,
@@ -6618,6 +6639,7 @@
 				4E45939E2D04E20000E277E1 /* ItemImagesViewModel.swift in Sources */,
 				C46DD8E52A8FA6510046A504 /* LiveTopBarView.swift in Sources */,
 				E18E01AD288746AF0022598C /* DotHStack.swift in Sources */,
+				E49A5FF62DED918500478725 /* QualityLevel.swift in Sources */,
 				E170D107294D23BA0017224C /* MediaSourceInfoCoordinator.swift in Sources */,
 				E102313B2BCF8A3C009D71FC /* ProgramProgressOverlay.swift in Sources */,
 				4E01446D2D0292E200193038 /* Trie.swift in Sources */,
@@ -7503,7 +7525,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 78;
 				DEVELOPMENT_ASSET_PATHS = "";
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = J63492PZ7Q;
 				ENABLE_BITCODE = NO;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
@@ -7543,7 +7565,7 @@
 				CURRENT_PROJECT_VERSION = 78;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_ASSET_PATHS = "";
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = J63492PZ7Q;
 				ENABLE_BITCODE = NO;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;

@@ -6,6 +6,7 @@
 // Copyright (c) 2025 Jellyfin & Jellyfin Contributors
 //
 
+import AVFoundation // Added for AVAudioSession
 import CoreStore
 import Defaults
 import Factory
@@ -68,6 +69,29 @@ struct SwiftfinApp: App {
         // don't keep last user id
         if Defaults[.signOutOnClose] {
             Defaults[.lastSignedInUserID] = .signedOut
+        }
+
+        // AVAudioSession Configuration for iOS
+        do {
+            let audioSession = AVAudioSession.sharedInstance()
+            try audioSession.setCategory(.playback, mode: .moviePlayback, options: [.allowAirPlay])
+
+            // Spatial audio features are generally available on iOS 15+
+            if #available(iOS 15.0, tvOS 15.0, *) {
+                try audioSession.setSupportsMultichannelContent(true)
+                // The following line causes build issues if iOS deployment target is < 15.0,
+                // even with the #available check, due to SDK interpretation.
+                // try audioSession.setPrefersSpatialAudio(true)
+                // If you raise iOS deployment target to 15.0 or later, you can uncomment the line above.
+            }
+
+            try audioSession.setActive(true)
+            // Consider logging success/failure if a logger is accessible here
+            // logger.info("AVAudioSession configured for optimal playback on iOS.")
+        } catch {
+            // Handle errors appropriately, e.g., log them
+            // logger.error("Failed to configure AVAudioSession on iOS: \(error.localizedDescription)")
+            print("Failed to configure AVAudioSession on iOS: \(error.localizedDescription)")
         }
     }
 

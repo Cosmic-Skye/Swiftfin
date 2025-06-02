@@ -7,7 +7,8 @@
 //
 
 import SwiftUI
-import VLCUI
+
+// import VLCUI - Replaced with SpatialVideoPlayer
 
 extension LiveVideoPlayer {
 

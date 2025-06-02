@@ -8,7 +8,9 @@
 
 import Defaults
 import SwiftUI
-import VLCUI
+
+// import VLCUI - Replaced with SpatialVideoPlayer
+// Direct import of SpatialVideoPlayer from Shared folder
 
 extension VideoPlayer.Overlay.ActionButtons {
 
@@ -21,7 +23,7 @@ extension VideoPlayer.Overlay.ActionButtons {
         @EnvironmentObject
         private var overlayTimer: TimerProxy
         @EnvironmentObject
-        private var videoPlayerProxy: VLCVideoPlayer.Proxy
+        private var videoPlayerProxy: SpatialVideoPlayer.Proxy
 
         private var content: (Bool) -> any View
 

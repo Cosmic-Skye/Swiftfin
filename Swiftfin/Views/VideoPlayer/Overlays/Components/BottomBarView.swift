@@ -9,7 +9,8 @@
 import Defaults
 import JellyfinAPI
 import SwiftUI
-import VLCUI
+
+// import VLCUI - Replaced with SpatialVideoPlayer
 
 extension VideoPlayer.Overlay {
 

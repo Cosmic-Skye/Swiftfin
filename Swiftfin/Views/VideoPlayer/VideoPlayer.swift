@@ -11,7 +11,8 @@ import JellyfinAPI
 import MediaPlayer
 import Stinsen
 import SwiftUI
-import VLCUI
+
+// import VLCUI - Replaced with SpatialVideoPlayer
 
 // TODO: organize
 // TODO: localization necessary for toast text?
@@ -111,37 +112,48 @@ struct VideoPlayer: View {
             .proxy(splitContentViewProxy)
             .content {
                 ZStack {
-                    VLCVideoPlayer(configuration: videoPlayerManager.currentViewModel.vlcVideoPlayerConfiguration)
-                        .proxy(videoPlayerManager.proxy)
-                        .onTicksUpdated { ticks, information in
+                    VLCVideoPlayerView(
+                        configuration: videoPlayerManager.currentViewModel.vlcVideoPlayerConfiguration,
+                        proxy: videoPlayerManager.proxy
+                    )
+                    .onTicksUpdated { ticks, information in
+                        let newSeconds = ticks / 1000
+                        let totalSeconds = CGFloat(videoPlayerManager.currentViewModel.item.runTimeSeconds)
+                        var newProgress: CGFloat
 
-                            let newSeconds = ticks / 1000
-                            let newProgress = CGFloat(newSeconds) / CGFloat(videoPlayerManager.currentViewModel.item.runTimeSeconds)
-                            currentProgressHandler.progress = newProgress
-                            currentProgressHandler.seconds = newSeconds
-
-                            guard !isScrubbing else { return }
-                            currentProgressHandler.scrubbedProgress = newProgress
-
-                            videoPlayerManager.onTicksUpdated(
-                                ticks: ticks,
-                                playbackInformation: information
-                            )
+                        if totalSeconds > 0 {
+                            newProgress = CGFloat(newSeconds) / totalSeconds
+                            // Clamp progress between 0 and 1
+                            newProgress = max(0, min(1, newProgress))
+                        } else {
+                            // If total duration is unknown, maintain current progress
+                            newProgress = currentProgressHandler.progress
                         }
-                        .onStateUpdated { state, _ in
 
-                            videoPlayerManager.onStateUpdated(newState: state)
+                        currentProgressHandler.progress = newProgress
+                        currentProgressHandler.seconds = newSeconds
 
-                            if state == .ended {
-                                if let _ = videoPlayerManager.nextViewModel,
-                                   Defaults[.VideoPlayer.autoPlayEnabled]
-                                {
-                                    videoPlayerManager.selectNextViewModel()
-                                } else {
-                                    router.dismissCoordinator()
-                                }
+                        guard !isScrubbing else { return }
+                        currentProgressHandler.scrubbedProgress = newProgress
+
+                        videoPlayerManager.onTicksUpdated(
+                            ticks: ticks,
+                            playbackInformation: information
+                        )
+                    }
+                    .onStateUpdated { state, _ in
+                        videoPlayerManager.onStateUpdated(newState: state)
+
+                        if state == .ended {
+                            if let _ = videoPlayerManager.nextViewModel,
+                               Defaults[.VideoPlayer.autoPlayEnabled]
+                            {
+                                videoPlayerManager.selectNextViewModel()
+                            } else {
+                                router.dismissCoordinator()
                             }
                         }
+                    }
 
                     GestureView()
                         .onHorizontalPan {
@@ -238,13 +250,14 @@ struct VideoPlayer: View {
             videoPlayerManager.proxy.setSubtitleColor(.absolute(newValue.uiColor))
         }
         .onChange(of: subtitleFontName) { newValue in
-            videoPlayerManager.proxy.setSubtitleFont(newValue)
+            let font = UIFont(name: newValue.description, size: 16)
+            videoPlayerManager.proxy.setSubtitleFont(font)
         }
         .onChange(of: subtitleOffset) { newValue in
             videoPlayerManager.proxy.setSubtitleDelay(.ticks(newValue))
         }
         .onChange(of: subtitleSize) { newValue in
-            videoPlayerManager.proxy.setSubtitleSize(.absolute(24 - newValue))
+            videoPlayerManager.proxy.setSubtitleSize(.absolute(Float(24 - newValue)))
         }
         .onChange(of: videoPlayerManager.currentViewModel) { newViewModel in
             guard let newViewModel else { return }

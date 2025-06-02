@@ -8,7 +8,8 @@
 
 import Defaults
 import SwiftUI
-import VLCUI
+
+// import VLCUI - Replaced with SpatialVideoPlayer
 
 struct VideoPlayer: View {
 
@@ -38,20 +39,30 @@ struct VideoPlayer: View {
     @ViewBuilder
     private var playerView: some View {
         ZStack {
-            VLCVideoPlayer(configuration: videoPlayerManager.currentViewModel.vlcVideoPlayerConfiguration)
-                .proxy(videoPlayerManager.proxy)
-                .onTicksUpdated { ticks, _ in
-
+            SpatialVideoPlayerView(
+                configuration: videoPlayerManager.currentViewModel.vlcVideoPlayerConfiguration,
+                proxy: videoPlayerManager.proxy,
+                onTicksUpdated: { ticks, _ in
                     let newSeconds = ticks / 1000
-                    let newProgress = CGFloat(newSeconds) / CGFloat(videoPlayerManager.currentViewModel.item.runTimeSeconds)
+                    let totalSeconds = CGFloat(videoPlayerManager.currentViewModel.item.runTimeSeconds)
+                    var newProgress: CGFloat
+
+                    if totalSeconds > 0 {
+                        newProgress = CGFloat(newSeconds) / totalSeconds
+                        // Clamp progress between 0 and 1
+                        newProgress = max(0, min(1, newProgress))
+                    } else {
+                        // If total duration is unknown, maintain current progress
+                        newProgress = currentProgressHandler.progress
+                    }
+
                     currentProgressHandler.progress = newProgress
                     currentProgressHandler.seconds = newSeconds
 
                     guard !isScrubbing else { return }
                     currentProgressHandler.scrubbedProgress = newProgress
-                }
-                .onStateUpdated { state, _ in
-
+                },
+                onStateUpdated: { state, _ in
                     videoPlayerManager.onStateUpdated(newState: state)
 
                     if state == .ended {
@@ -64,6 +75,7 @@ struct VideoPlayer: View {
                         }
                     }
                 }
+            )
 
             VideoPlayer.Overlay()
                 .eraseToAnyView()

@@ -9,7 +9,8 @@
 import Factory
 import Foundation
 import JellyfinAPI
-import VLCUI
+
+// import VLCUI - Replaced with SpatialVideoPlayer
 
 extension MediaStream {
 

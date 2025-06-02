@@ -8,7 +8,8 @@
 
 import PreferencesView
 import SwiftUI
-import VLCUI
+
+// import VLCUI - Replaced with SpatialVideoPlayer
 
 extension VideoPlayer {
 

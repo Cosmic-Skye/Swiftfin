@@ -8,7 +8,8 @@
 
 import Defaults
 import SwiftUI
-import VLCUI
+
+// import VLCUI - Replaced with SpatialVideoPlayer
 
 extension VideoPlayer.Overlay.ActionButtons {
 
@@ -28,7 +29,7 @@ extension VideoPlayer.Overlay.ActionButtons {
                 ForEach(viewModel.subtitleStreams.prepending(.none), id: \.index) { subtitleTrack in
                     Button {
                         videoPlayerManager.subtitleTrackIndex = subtitleTrack.index ?? -1
-                        videoPlayerProxy.setSubtitleTrack(.absolute(subtitleTrack.index ?? -1))
+                        videoPlayerProxy.setSubtitleTrack(index: subtitleTrack.index ?? -1)
                     } label: {
                         if videoPlayerManager.subtitleTrackIndex == subtitleTrack.index ?? -1 {
                             Label(subtitleTrack.displayTitle ?? .emptyDash, systemImage: "checkmark")

@@ -11,7 +11,8 @@ import Defaults
 import JellyfinAPI
 import OrderedCollections
 import SwiftUI
-import VLCUI
+
+// import VLCUI - Replaced with SpatialVideoPlayer
 
 // TODO: figure out why `continuousLeadingEdge` scroll behavior has different
 //       insets than default continuous

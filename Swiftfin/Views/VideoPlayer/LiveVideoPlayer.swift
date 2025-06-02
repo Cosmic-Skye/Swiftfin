@@ -11,7 +11,8 @@ import JellyfinAPI
 import MediaPlayer
 import Stinsen
 import SwiftUI
-import VLCUI
+
+// import VLCUI - Replaced with SpatialVideoPlayer
 
 // TODO: organize
 // TODO: localization necessary for toast text?
@@ -82,35 +83,35 @@ struct LiveVideoPlayer: View {
             .proxy(splitContentViewProxy)
             .content {
                 ZStack {
-                    VLCVideoPlayer(configuration: videoPlayerManager.currentViewModel.vlcVideoPlayerConfiguration)
-                        .proxy(videoPlayerManager.proxy)
-                        .onTicksUpdated { ticks, _ in
-
-                            let newSeconds = ticks / 1000
-                            var newProgress = CGFloat(newSeconds) / CGFloat(videoPlayerManager.currentViewModel.item.runTimeSeconds)
-                            if newProgress.isInfinite || newProgress.isNaN {
-                                newProgress = 0
-                            }
-                            currentProgressHandler.progress = newProgress
-                            currentProgressHandler.seconds = newSeconds
-
-                            guard !isScrubbing else { return }
-                            currentProgressHandler.scrubbedProgress = newProgress
+                    VLCVideoPlayerView(
+                        configuration: videoPlayerManager.currentViewModel.vlcVideoPlayerConfiguration,
+                        proxy: videoPlayerManager.proxy
+                    )
+                    .onTicksUpdated { ticks, _ in
+                        let newSeconds = ticks / 1000
+                        var newProgress = CGFloat(newSeconds) / CGFloat(videoPlayerManager.currentViewModel.item.runTimeSeconds)
+                        if newProgress.isInfinite || newProgress.isNaN {
+                            newProgress = 0
                         }
-                        .onStateUpdated { state, _ in
+                        currentProgressHandler.progress = newProgress
+                        currentProgressHandler.seconds = newSeconds
 
-                            videoPlayerManager.onStateUpdated(newState: state)
+                        guard !isScrubbing else { return }
+                        currentProgressHandler.scrubbedProgress = newProgress
+                    }
+                    .onStateUpdated { state, _ in
+                        videoPlayerManager.onStateUpdated(newState: state)
 
-                            if state == .ended {
-                                if let _ = videoPlayerManager.nextViewModel,
-                                   Defaults[.VideoPlayer.autoPlayEnabled]
-                                {
-                                    videoPlayerManager.selectNextViewModel()
-                                } else {
-                                    router.dismissCoordinator {}
-                                }
+                        if state == .ended {
+                            if let _ = videoPlayerManager.nextViewModel,
+                               Defaults[.VideoPlayer.autoPlayEnabled]
+                            {
+                                videoPlayerManager.selectNextViewModel()
+                            } else {
+                                router.dismissCoordinator {}
                             }
                         }
+                    }
 
                     GestureView()
                         .onHorizontalPan {
@@ -173,51 +174,61 @@ struct LiveVideoPlayer: View {
     }
 
     var body: some View {
-        Group {
-            if let _ = videoPlayerManager.currentViewModel {
-                playerView
-            } else {
-                VideoPlayer.LoadingView()
+        ZStack {
+            Group {
+                if let _ = videoPlayerManager.currentViewModel {
+                    playerView
+                } else {
+                    VideoPlayer.LoadingView()
+                }
             }
+
+            // Hidden view for onChange effects
+            HStack {
+                EmptyView()
+                    .onChange(of: audioOffset) { newValue in
+                        videoPlayerManager.proxy.setAudioDelay(.ticks(newValue))
+                    }
+                    .onChange(of: isGestureLocked) { newValue in
+                        if newValue {
+                            updateViewProxy.present(systemName: "lock.fill", title: L10n.gesturesLocked)
+                        } else {
+                            updateViewProxy.present(systemName: "lock.open.fill", title: L10n.gesturesUnlocked)
+                        }
+                    }
+                EmptyView()
+                    .onChange(of: isScrubbing) { newValue in
+                        guard !newValue else { return }
+                        videoPlayerManager.proxy.setTime(.seconds(currentProgressHandler.scrubbedSeconds))
+                    }
+                    .onChange(of: subtitleColor) { newValue in
+                        videoPlayerManager.proxy.setSubtitleColor(.absolute(newValue.uiColor))
+                    }
+                EmptyView()
+                    .onChange(of: subtitleFontName) { newValue in
+                        let font = UIFont(name: newValue.description, size: 16)
+                        videoPlayerManager.proxy.setSubtitleFont(font)
+                    }
+                    .onChange(of: subtitleOffset) { newValue in
+                        videoPlayerManager.proxy.setSubtitleDelay(.ticks(newValue))
+                    }
+                EmptyView()
+                    .onChange(of: subtitleSize) { newValue in
+                        videoPlayerManager.proxy.setSubtitleSize(.absolute(Float(24 - newValue)))
+                    }
+                    .onChange(of: videoPlayerManager.currentViewModel) { newViewModel in
+                        guard let newViewModel else { return }
+                        videoPlayerManager.proxy.playNewMedia(newViewModel.vlcVideoPlayerConfiguration)
+                        isAspectFilled = false
+                        audioOffset = 0
+                        subtitleOffset = 0
+                    }
+            }
+            .hidden()
         }
         .navigationBarHidden(true)
         .statusBar(hidden: true)
         .ignoresSafeArea()
-        .onChange(of: audioOffset) { newValue in
-            videoPlayerManager.proxy.setAudioDelay(.ticks(newValue))
-        }
-        .onChange(of: isGestureLocked) { newValue in
-            if newValue {
-                updateViewProxy.present(systemName: "lock.fill", title: L10n.gesturesLocked)
-            } else {
-                updateViewProxy.present(systemName: "lock.open.fill", title: L10n.gesturesUnlocked)
-            }
-        }
-        .onChange(of: isScrubbing) { newValue in
-            guard !newValue else { return }
-            videoPlayerManager.proxy.setTime(.seconds(currentProgressHandler.scrubbedSeconds))
-        }
-        .onChange(of: subtitleColor) { newValue in
-            videoPlayerManager.proxy.setSubtitleColor(.absolute(newValue.uiColor))
-        }
-        .onChange(of: subtitleFontName) { newValue in
-            videoPlayerManager.proxy.setSubtitleFont(newValue)
-        }
-        .onChange(of: subtitleOffset) { newValue in
-            videoPlayerManager.proxy.setSubtitleDelay(.ticks(newValue))
-        }
-        .onChange(of: subtitleSize) { newValue in
-            videoPlayerManager.proxy.setSubtitleSize(.absolute(24 - newValue))
-        }
-        .onChange(of: videoPlayerManager.currentViewModel) { newViewModel in
-            guard let newViewModel else { return }
-
-            videoPlayerManager.proxy.playNewMedia(newViewModel.vlcVideoPlayerConfiguration)
-
-            isAspectFilled = false
-            audioOffset = 0
-            subtitleOffset = 0
-        }
     }
 }
 

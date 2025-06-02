@@ -18,7 +18,7 @@
 </div>
 
 <p align="center">
-  <b>Swiftfin</b> is a modern video client for the <a href="https://github.com/jellyfin/jellyfin">Jellyfin</a> media server. Made using Swift to maximize direct play with the power of <b>VLC</b> and look <b>native</b> on all classes of Apple devices.
+  <b>Swiftfin</b> is a modern video client for the <a href="https://github.com/jellyfin/jellyfin">Jellyfin</a> media server. Made using Swift to maximize direct play with <b>spatial audio support</b> and look <b>native</b> on all classes of Apple devices.
 </p>
 
 ## ⚡️ Download
@@ -44,7 +44,7 @@ Thank you for your interest in Swiftfin! Please check out the [Contribution Guid
 
 ## 🎬 Player Differences
 
-Swiftfin offers both **Native (AVKit)** and **Swiftfin (VLCKit)** players to provide the best compatibility across Apple devices. To learn more about the capabilities and differences between these players, visit our [Player Differences documentation](https://github.com/jellyfin/Swiftfin/blob/main/Documentation/players.md).
+Swiftfin offers both **Native (AVKit)** and **Swiftfin (SpatialAVPlayer)** players to provide the best compatibility and spatial audio support across Apple devices. To learn more about the capabilities and differences between these players, visit our [Player Differences documentation](https://github.com/jellyfin/Swiftfin/blob/main/Documentation/players.md).
 
 ## 📚 Translations
 

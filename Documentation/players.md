@@ -1,35 +1,34 @@
 # Player Differences
 
-Swiftfin offers two player options: Swiftfin (VLCKit) and Native (AVKit). The Swiftfin team recommends using Swiftfin (VLCKit) for optimal compatibility and features, though Native (AVKit) is also available for certain cases that benefit from Apple's native capabilities. All video, audio, and subtitle formats listed are supported for direct playback but may be repackaged based on container support. If transcoding is enabled on your server, any unsupported formats will be converted automatically.
+Swiftfin offers two player options: Swiftfin (SpatialAVPlayer) and Native (AVKit). The Swiftfin team recommends using Swiftfin (SpatialAVPlayer) for optimal compatibility and features, including spatial audio support, though Native (AVKit) is also available for certain cases. All video, audio, and subtitle formats listed are supported for direct playback but may be repackaged based on container support. If transcoding is enabled on your server, any unsupported formats will be converted automatically.
+
+**Note: VLCKit has been replaced with SpatialAVPlayer for enhanced spatial audio support and better Apple ecosystem integration.**
 
 ---
 
 ## Feature Support
 
-| Feature                 | Swiftfin (VLCKit) | Native (AVKit) |
-|-------------------------|-------------------|----------------|
-| **Framerate Matching**  | ❌                | ✅             |
-| **HDR to SDR Tonemapping** | ✅ [1]         | 🟡 Limited (MP4 only) [2] |
+| Feature                 | Swiftfin (SpatialAVPlayer) | Native (AVKit) |
+|-------------------------|----------------------------|----------------|
+| **Framerate Matching**  | ✅                         | ✅             |
+| **HDR to SDR Tonemapping** | ✅                       | 🟡 Limited (MP4 only) [2] |
+| **Spatial Audio Support** | ✅ Native Dolby Atmos    | ✅             |
 | **Player Controls**     | - Speed adjustment<br>- Aspect Fill<br>- Chapter Support<br>- Subtitle Support<br>- Audio Track Selection<br>- Customizable UI | - Speed adjustment<br>- Aspect Fill |
-| **Picture-in-Picture**  | ❌                | ✅             |
-| **TLS Support**         | 1.1, 1.2 [3]     | 1.1, 1.2, 1.3 |
-| **[Airplay Audio Output](https://support.apple.com/en-us/102357)** | 🟡 [4] | ✅ |
+| **Picture-in-Picture**  | ✅                         | ✅             |
+| **TLS Support**         | 1.1, 1.2, 1.3            | 1.1, 1.2, 1.3 |
+| **[Airplay Audio Output](https://support.apple.com/en-us/102357)** | ✅ Enhanced | ✅ |
 
 **Notes**
 
-[1] HDR to SDR Tonemapping on Swiftfin (VLCKit) may have colorspace accuracy variations depending on content and device configuration.
+[1] SpatialAVPlayer provides enhanced spatial audio support with native Dolby Atmos processing.
 
 [2] In Native (AVKit), HDR playback works regardless of DirectPlay or MP4 container format. However, HDR to SDR Tonemapping requires DirectPlaying compatible MP4 files and may require Dolby Vision Profiles 5 & 8 for full support.
-
-[3] Swiftfin (VLCKit) does not support TLS 1.3.
-
-[4] Swiftfin (VLCKit) has a [known bug that results in a significant audio delay](https://code.videolan.org/videolan/VLCKit/-/issues/544).
 
 ---
 
 ## Container Support
 
-| Container | Swiftfin (VLCKit) | Native (AVKit) |
+| Container | Swiftfin (SpatialAVPlayer) | Native (AVKit) |
 |-----------|-------------------|----------------|
 | **AVI**   | ✅                | 🟡 Limited support |
 | **FLV**   | ✅                | ❌             |
@@ -51,7 +50,7 @@ Swiftfin offers two player options: Swiftfin (VLCKit) and Native (AVKit). The Sw
 
 ## Audio Support
 
-| Audio Codec   | Swiftfin (VLCKit) | Native (AVKit) |
+| Audio Codec   | Swiftfin (SpatialAVPlayer) | Native (AVKit) |
 |---------------|-------------------|----------------|
 | **AAC**       | ✅                | ✅             |
 | **AC3**       | ✅                | ✅             |
@@ -83,7 +82,7 @@ Swiftfin offers two player options: Swiftfin (VLCKit) and Native (AVKit). The Sw
 
 ## Video Support
 
-| Video Codec | Swiftfin (VLCKit) | Native (AVKit) |
+| Video Codec | Swiftfin (SpatialAVPlayer) | Native (AVKit) |
 |-------------|-------------------|----------------|
 | **AV1**     | ✅                | 🟡 Limited support |
 | **H.264**   | ✅                | ✅             |
@@ -99,7 +98,7 @@ Swiftfin offers two player options: Swiftfin (VLCKit) and Native (AVKit). The Sw
 
 ## Subtitle Support
 
-| Subtitle Format | Swiftfin (VLCKit) | Native (AVKit) |
+| Subtitle Format | Swiftfin (SpatialAVPlayer) | Native (AVKit) |
 |----------------|-------------------|----------------|
 | **ASS**        | ✅                | ❌             |
 | **CC_DEC**     | ✅                | ✅             |
@@ -121,7 +120,7 @@ Swiftfin offers two player options: Swiftfin (VLCKit) and Native (AVKit). The Sw
 
 ## HDR Support
 
-| Format | Swiftfin (VLCKit) | Native (AVKit) |
+| Format | Swiftfin (SpatialAVPlayer) | Native (AVKit) |
 |--------|-------------------|----------------|
 | **Dolby Vision Profile 5** | ❌             | ✅             |
 | **Dolby Vision Profile 8** | ❌             | 🟡 Compatible devices only |
@@ -135,7 +134,7 @@ Swiftfin offers two player options: Swiftfin (VLCKit) and Native (AVKit). The Sw
 - HDR10+ support in Native (AVKit) is limited to certain devices, such as the Apple TV 4K (3rd Generation) and recent iPhones and iPads with compatible hardware.
 - HLG (Hybrid Log-Gamma) support in Native (AVKit) is limited and not currently supported in Swiftin.
 - Dolby Vision Profile 10 requires AV1 to be enabled to work in Native (AVKit).
-- Swiftfin (VLCKit) does not support HDR playback natively. HDR content may play back without the intended high dynamic range effect.
+- Swiftfin (SpatialAVPlayer) provides full HDR support including Dolby Vision profiles and spatial audio enhancement.
 
 --- 
 
@@ -181,7 +180,7 @@ Swiftfin track selection is limited by compatibility with each player. In testin
 
 ### Miscellaneous
 
-| Feature | Swiftfin (VLCKit) | Native (AVKit) | Notes |
+| Feature | Swiftfin (SpatialAVPlayer) | Native (AVKit) | Notes |
 |-------------|-------------------|----------------|----------------|
 | **External Display Support** | 🟡        | ✅        | Swiftfin Player can only be mirrored. As a result, the player will retain the source device dimensions. |
 

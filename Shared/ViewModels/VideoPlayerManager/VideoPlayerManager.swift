@@ -13,7 +13,8 @@ import Foundation
 import JellyfinAPI
 import MediaPlayer
 import UIKit
-import VLCUI
+
+// import VLCUI - Replaced with SpatialVideoPlayer
 
 // TODO: better online/offline handling
 // TODO: proper error catching
@@ -40,7 +41,7 @@ class VideoPlayerManager: ViewModel {
     @Published
     var audioTrackIndex: Int = -1
     @Published
-    var state: VLCVideoPlayer.State = .opening
+    var state: SpatialVideoPlayer.State = .opening
     @Published
     var subtitleTrackIndex: Int = -1
     @Published
@@ -63,7 +64,7 @@ class VideoPlayerManager: ViewModel {
     var nextViewModel: VideoPlayerViewModel?
 
     var currentProgressHandler: CurrentProgressHandler = .init()
-    let proxy: VLCVideoPlayer.Proxy = .init()
+    let proxy: SpatialVideoPlayer.Proxy = .init()
 
     private var currentProgressWorkItem: DispatchWorkItem?
     private var hasSentStart = false
@@ -90,7 +91,7 @@ class VideoPlayerManager: ViewModel {
         nextViewModel = nil
     }
 
-    func onTicksUpdated(ticks: Int, playbackInformation: VLCVideoPlayer.PlaybackInformation) {
+    func onTicksUpdated(ticks: Int, playbackInformation: SpatialVideoPlayer.PlaybackInformation) {
 
         if audioTrackIndex != playbackInformation.currentAudioTrack.index {
             audioTrackIndex = playbackInformation.currentAudioTrack.index
@@ -101,7 +102,7 @@ class VideoPlayerManager: ViewModel {
         }
     }
 
-    func onStateUpdated(newState: VLCVideoPlayer.State) {
+    func onStateUpdated(newState: SpatialVideoPlayer.State) {
         guard state != newState else { return }
         state = newState
 

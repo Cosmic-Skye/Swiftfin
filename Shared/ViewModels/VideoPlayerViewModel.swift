@@ -12,7 +12,8 @@ import Files
 import Foundation
 import JellyfinAPI
 import UIKit
-import VLCUI
+
+// import VLCUI - Replaced with SpatialVideoPlayer
 
 final class VideoPlayerViewModel: ViewModel {
 
@@ -63,23 +64,23 @@ final class VideoPlayerViewModel: ViewModel {
 
     // TODO: should start time be from the media source instead?
     var vlcVideoPlayerConfiguration: VLCVideoPlayer.Configuration {
-        let configuration = VLCVideoPlayer.Configuration(url: playbackURL)
+        var configuration = VLCVideoPlayer.Configuration(url: playbackURL)
         configuration.autoPlay = true
-        configuration.startTime = .seconds(max(0, item.startTimeSeconds - Defaults[.VideoPlayer.resumeOffset]))
-        if self.audioStreams[0].path != nil {
-            configuration.audioIndex = .absolute(selectedAudioStreamIndex)
-        }
-        configuration.subtitleIndex = .absolute(selectedSubtitleStreamIndex)
-        configuration.subtitleSize = .absolute(Defaults[.VideoPlayer.Subtitle.subtitleSize])
-        configuration.subtitleColor = .absolute(Defaults[.VideoPlayer.Subtitle.subtitleColor].uiColor)
+        configuration.startTime = max(0, item.startTimeSeconds - Defaults[.VideoPlayer.resumeOffset])
 
-        if let font = UIFont(name: Defaults[.VideoPlayer.Subtitle.subtitleFontName], size: 0) {
-            configuration.subtitleFont = .absolute(font)
+        if self.audioStreams.first?.path != nil {
+            configuration.audioTrackIndex = selectedAudioStreamIndex
         }
 
-        configuration.playbackChildren = subtitleStreams
+        configuration.subtitleTrackIndex = selectedSubtitleStreamIndex
+
+        // Note: SpatialVideoPlayer handles subtitle styling differently than VLC
+        // Subtitle appearance settings (size, color, font) are managed by the system
+
+        // Add external subtitles to configuration
+        configuration.externalSubtitles = subtitleStreams
             .filter { $0.deliveryMethod == .external }
-            .compactMap(\.asPlaybackChild)
+            .compactMap(\.asExternalSubtitle)
 
         return configuration
     }

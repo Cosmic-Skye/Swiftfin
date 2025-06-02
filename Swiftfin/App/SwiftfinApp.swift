@@ -74,24 +74,52 @@ struct SwiftfinApp: App {
         // AVAudioSession Configuration for iOS
         do {
             let audioSession = AVAudioSession.sharedInstance()
-            try audioSession.setCategory(.playback, mode: .moviePlayback, options: [.allowAirPlay])
+            print("[AudioSession] Attempting configuration...")
 
-            // Spatial audio features are generally available on iOS 15+
-            if #available(iOS 15.0, tvOS 15.0, *) {
-                try audioSession.setSupportsMultichannelContent(true)
-                // The following line causes build issues if iOS deployment target is < 15.0,
-                // even with the #available check, due to SDK interpretation.
-                // try audioSession.setPrefersSpatialAudio(true)
-                // If you raise iOS deployment target to 15.0 or later, you can uncomment the line above.
+            do {
+                print("[AudioSession] Setting category: .playback, mode: .moviePlayback (NO options first)")
+                try audioSession.setCategory(.playback, mode: .moviePlayback)
+                print("[AudioSession] Successfully set category and mode.")
+                // .allowAirPlay option remains removed for now to avoid -50 error
+            } catch {
+                print("[AudioSession] FAILED during category/mode setting: \(error.localizedDescription)")
+                throw error // Re-throw to be caught by the outer catch
             }
 
-            try audioSession.setActive(true)
-            // Consider logging success/failure if a logger is accessible here
-            // logger.info("AVAudioSession configured for optimal playback on iOS.")
+            if #available(iOS 15.0, tvOS 15.0, *) {
+                do {
+                    print("[AudioSession] Setting supportsMultichannelContent = true")
+                    try audioSession.setSupportsMultichannelContent(true)
+                    print("[AudioSession] Successfully set supportsMultichannelContent.")
+                } catch {
+                    print("[AudioSession] FAILED to set supportsMultichannelContent: \(error.localizedDescription)")
+                    throw error // Re-throw
+                }
+
+                // do {
+                //     print("[AudioSession] Setting prefersSpatialAudio = true")
+                //     try audioSession.setPrefersSpatialAudio(true) // Re-commented to allow build
+                //     print("[AudioSession] Successfully set prefersSpatialAudio.")
+                // } catch {
+                //     print("[AudioSession] FAILED to set prefersSpatialAudio: \(error.localizedDescription)")
+                //     throw error
+                // }
+            }
+
+            do {
+                print("[AudioSession] Activating session...")
+                try audioSession.setActive(true)
+                print("[AudioSession] Successfully activated session.")
+            } catch {
+                print("[AudioSession] FAILED to activate session: \(error.localizedDescription)")
+                throw error // Re-throw
+            }
+            print("[AudioSession] Configuration complete and session active.")
         } catch {
-            // Handle errors appropriately, e.g., log them
-            // logger.error("Failed to configure AVAudioSession on iOS: \(error.localizedDescription)")
-            print("Failed to configure AVAudioSession on iOS: \(error.localizedDescription)")
+            print("[AudioSession] OVERALL FAILURE in configuration: \(error.localizedDescription)")
+            if let nsError = error as NSError? {
+                print("[AudioSession] Error Code: \(nsError.code), Domain: \(nsError.domain), UserInfo: \(nsError.userInfo)")
+            }
         }
     }
 

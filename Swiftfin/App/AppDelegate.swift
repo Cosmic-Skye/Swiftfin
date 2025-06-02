@@ -22,13 +22,13 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
 
-        let audioSession = AVAudioSession.sharedInstance()
-        do {
-            try audioSession.setCategory(.playback)
-        } catch {
-            print("setting category AVAudioSessionCategoryPlayback failed")
-        }
+        // let audioSession = AVAudioSession.sharedInstance()
+        // do {
+        //     try audioSession.setCategory(.playback)
+        // } catch {
+        //     print("setting category AVAudioSessionCategoryPlayback failed")
+        // }
 
-        return true
+        true
     }
 }

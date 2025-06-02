@@ -256,17 +256,17 @@ extension [MediaStream] {
         }
 
         var newInternalTracks: [MediaStream] = []
-        for (index, var track) in orderedInternal.enumerated() {
-            track.index = index
-            newInternalTracks.append(track)
-        }
+        // The .index property of a MediaStream should reflect its original server-provided index.
+        // Do not re-assign it here. The ordering is achieved by the array construction.
+        // If VLC or another consumer needs a 0-based index *after* ordering,
+        // that should be calculated at the point of use, not by mutating the original index.
+        newInternalTracks.append(contentsOf: orderedInternal) // Add all ordered internal tracks
 
         var newExternalTracks: [MediaStream] = []
-        let startingIndexForExternal = newInternalTracks.count
-        for (offset, var track) in externalTracks.enumerated() {
-            track.index = startingIndexForExternal + offset
-            newExternalTracks.append(track)
-        }
+        // External tracks also retain their original indices if they have them,
+        // or they might be synthetic. For now, just append them.
+        // If external tracks needed re-indexing for a specific consumer, that consumer would handle it.
+        newExternalTracks.append(contentsOf: externalTracks)
 
         return newInternalTracks + newExternalTracks
     }

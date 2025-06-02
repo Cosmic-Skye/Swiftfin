@@ -127,12 +127,41 @@ class VideoPlayerManager: ViewModel {
 
             // Populate availableAudioStreams from the new view model
             DispatchQueue.main.async {
-                if let streams = newValue.item.mediaStreams { // Safely unwrap
-                    self.availableAudioStreams = streams.filter { $0.type == .audio }
+                // Log container and video stream details
+                self.logger.info("""
+                [PlayerManager Init] Media Source Container: \(newValue.mediaSource.container ?? "N/A")
+                """)
+                if let videoStream = newValue.item.mediaStreams?.first(where: { $0.type == .video }) {
+                    self.logger.info("""
+                    [PlayerManager Init] Video Stream Details:
+                      Codec: \(videoStream.codec ?? "N/A")
+                      Profile: \(videoStream.profile ?? "N/A")
+                      Bitrate: \(videoStream.bitRate ?? -1)
+                      Width: \(videoStream.width ?? -1)
+                      Height: \(videoStream.height ?? -1)
+                    """)
                 } else {
-                    self.availableAudioStreams = []
+                    self.logger.info("[PlayerManager Init] No video stream found in item.")
                 }
 
+                // Log all available audio streams
+                if let streams = newValue.item.mediaStreams { // Safely unwrap
+                    self.availableAudioStreams = streams.filter { $0.type == .audio }
+                    self.logger.info("[PlayerManager Init] All Available Audio MediaStreams from Server:")
+                    for stream in self.availableAudioStreams {
+                        self.logger.info("""
+                        - Index: \(stream.index ?? -1), Title: \(stream.title ?? "N/A"), Display: \(stream
+                            .displayTitle ?? "N/A"), Codec: \(stream.codec ?? "N/A"), Profile: \(stream.profile ?? "N/A"), Lang: \(stream
+                            .language ?? "N/A"), Channels: \(stream.channels ?? -1), Bitrate: \(stream
+                            .bitRate ?? -1), Default: \(String(describing: stream.isDefault))
+                        """)
+                    }
+                } else {
+                    self.availableAudioStreams = []
+                    self.logger.info("[PlayerManager Init] No media streams found in item.")
+                }
+
+                // Set selected audio stream
                 if let defaultAudioIndex = newValue.mediaSource.defaultAudioStreamIndex,
                    defaultAudioIndex < self.availableAudioStreams.count
                 {
@@ -142,6 +171,23 @@ class VideoPlayerManager: ViewModel {
                 } else {
                     self.selectedAudioStream = nil
                 }
+
+                if let selected = self.selectedAudioStream {
+                    self.logger
+                        .info(
+                            "[PlayerManager Init] Initially selected audio stream (by default/first): Index \(selected.index ?? -1), Display: \(selected.displayTitle ?? "N/A")"
+                        )
+                } else {
+                    self.logger.info("[PlayerManager Init] No audio stream initially selected.")
+                }
+
+                // The OnlineVideoPlayerManager is now responsible for creating the initial
+                // currentViewModel with the correct selectedAudioStreamIndex.
+                // This mismatch detection logic is no longer needed here.
+                // The primary role of this willSet's async block is to update UI-related properties
+                // like availableAudioStreams and the manager's own selectedAudioStream (MediaStream object)
+                // based on the already correctly configured newValue (VideoPlayerViewModel).
+
                 // Reset player-specific options until AVPlayer loads them
                 self.availablePlayerAudioOptions = []
                 self.selectedPlayerAudioOption = nil
@@ -176,6 +222,47 @@ class VideoPlayerManager: ViewModel {
         selectedOption: AVMediaSelectionOption?
     ) {
         DispatchQueue.main.async {
+            self.logger.info("[PlayerManager] updatePlayerAudioOptions called.")
+            self.logger.info("  Received \(options.count) AVMediaSelectionOptions.")
+            if let group = group {
+                self.logger.info("  AudioSelectionGroup allowsEmptySelection: \(group.allowsEmptySelection)")
+            } else {
+                self.logger.info("  AudioSelectionGroup: nil")
+            }
+
+            for (index, option) in options.enumerated() {
+                var optionLog = "  Option \(index + 1):\n"
+                optionLog += "    Display Name: \(option.displayName)\n"
+                optionLog += "    Extended Language Tag: \(option.extendedLanguageTag ?? "N/A")\n"
+                optionLog += "    Media Type: \(option.mediaType.rawValue)\n" // AVMediaType is not optional
+                optionLog += "    Playable: \(option.isPlayable)\n"
+
+                if #available(iOS 15.0, tvOS 15.0, *) {
+                    optionLog += "    Common Metadata:\n"
+                    if option.commonMetadata.isEmpty {
+                        optionLog += "      (No common metadata)\n"
+                    }
+                    for metaItem in option.commonMetadata {
+                        optionLog += "      - \(metaItem.commonKey?.rawValue ?? "Unknown key"): \(metaItem.value?.description ?? "N/A")\n"
+                    }
+
+                    // AVMediaSelectionOption does not have formatDescriptions directly.
+                    // Format descriptions are on AVAssetTrack or AVPlayerItemTrack,
+                    // which are logged in NativeVideoPlayer.swift.
+                    // We will log common metadata here as it's available on AVMediaSelectionOption.
+                }
+                self.logger.info("\(optionLog)")
+            }
+
+            if let selOpt = selectedOption {
+                self.logger.info("  Initially Selected AVMediaSelectionOption:")
+                self.logger.info("    Display Name: \(selOpt.displayName)")
+                self.logger.info("    Extended Language Tag: \(selOpt.extendedLanguageTag ?? "N/A")")
+                self.logger.info("    Playable: \(String(describing: selOpt.isPlayable))")
+            } else {
+                self.logger.info("  Initially Selected AVMediaSelectionOption: nil")
+            }
+
             self.availablePlayerAudioOptions = options
             self.audioSelectionGroup = group // Keep this for AVPlayer to use
             self.selectedPlayerAudioOption = selectedOption
@@ -209,6 +296,16 @@ class VideoPlayerManager: ViewModel {
                         return titleMatch // Fallback to title match
                     })
                     self.selectedAudioStream = matchedStream ?? self.selectedAudioStream // Keep old if no match
+                    if matchedStream != nil {
+                        self.logger
+                            .info(
+                                "  Successfully mapped selected AVPlayerOption '\(avOption.displayName)' back to MediaStream '\(matchedStream?.displayTitle ?? "N/A")'"
+                            )
+                    } else {
+                        self.logger.warning("  Could NOT map selected AVPlayerOption '\(avOption.displayName)' back to a MediaStream.")
+                    }
+                } else {
+                    self.logger.warning("  Selected AVPlayerOption index out of bounds or not found for mapping to MediaStream.")
                 }
             }
         }
@@ -220,8 +317,64 @@ class VideoPlayerManager: ViewModel {
             logger.error("Attempted to select an unavailable audio stream: \((stream.title ?? stream.displayTitle) ?? "Unknown")")
             return
         }
-        self.selectedAudioStream = stream
-        selectAudioStreamAction.send(stream) // UINativeVideoPlayerViewController will pick this up
+        self.selectedAudioStream = stream // Update the MediaStream object for UI state (e.g., checkmark in menu)
+
+        let newAudioStreamIndex = stream.index ?? 0 // Default to 0 if nil
+
+        // Log MediaStream details of the user's selection
+        logger.info("""
+        [MediaStream Details] User selected audio stream from UI:
+        Index: \(newAudioStreamIndex)
+        Title: \(stream.title ?? "N/A")
+        Display Title: \(stream.displayTitle ?? "N/A")
+        Codec: \(stream.codec ?? "N/A")
+        Profile: \(stream.profile ?? "N/A")
+        Language: \(stream.language ?? "N/A")
+        """)
+
+        guard let currentVM = self.currentViewModel else {
+            logger.error("Cannot change audio stream: currentViewModel is nil.")
+            return
+        }
+
+        if newAudioStreamIndex != currentVM.selectedAudioStreamIndex {
+            logger
+                .info(
+                    "Audio stream selection (index \(newAudioStreamIndex)) differs from current ViewModel's audio index (\(currentVM.selectedAudioStreamIndex)). Creating new ViewModel to re-initialize player."
+                )
+
+            // Note: VideoPlayerViewModel's hlsPlaybackURL is computed based on its properties,
+            // including selectedAudioStreamIndex. We don't pass a new URL to init.
+            // The playbackURL param for init is the general one (e.g. for VLC).
+            // startTimeTicks is not part of VideoPlayerViewModel init, seeking is handled by the player.
+
+            let newViewModel = VideoPlayerViewModel(
+                playbackURL: currentVM.playbackURL, // Original base playback URL
+                item: currentVM.item,
+                mediaSource: currentVM.mediaSource,
+                playSessionID: currentVM.playSessionID,
+                // Pass the original full lists of streams from the mediaSource for internal processing by VideoPlayerViewModel init
+                videoStreams: currentVM.mediaSource.mediaStreams?.filter { $0.type == .video } ?? [],
+                audioStreams: currentVM.mediaSource.mediaStreams?.filter { $0.type == .audio } ?? [],
+                subtitleStreams: currentVM.mediaSource.mediaStreams?.filter { $0.type == .subtitle } ?? [],
+                selectedAudioStreamIndex: newAudioStreamIndex, // <<< KEY: Set the new audio index
+                selectedSubtitleStreamIndex: currentVM.selectedSubtitleStreamIndex, // Keep current subtitle selection
+                chapters: currentVM.chapters, // Pass existing chapters
+                playMethod: currentVM.playMethod
+            )
+
+            // Setting currentViewModel will trigger its 'willSet' and also notify
+            // UINativeVideoPlayerViewController to reload the player.
+            self.currentViewModel = newViewModel
+
+            // DO NOT send selectAudioStreamAction here, as the player will be re-initialized.
+        } else {
+            logger
+                .info(
+                    "Selected audio stream index \(newAudioStreamIndex) is the same as current ViewModel's audio index. Sending action to select within current player (if possible)."
+                )
+            selectAudioStreamAction.send(stream)
+        }
     }
 
     // Renamed: Kept for internal use if AVPlayer needs direct AVMediaSelectionOption command

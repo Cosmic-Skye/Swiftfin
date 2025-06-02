@@ -6,7 +6,7 @@
 // Copyright (c) 2025 Jellyfin & Jellyfin Contributors
 //
 
-import AVFoundation // Added for AVAudioSession
+import AVFoundation // Reverted: AVFAudio did not resolve setPrefersSpatialAudio build issue
 import CoreStore
 import Defaults
 import Factory
@@ -98,7 +98,7 @@ struct SwiftfinApp: App {
 
                 // do {
                 //     print("[AudioSession] Setting prefersSpatialAudio = true")
-                //     try audioSession.setPrefersSpatialAudio(true) // Re-commented to allow build
+                //     try audioSession.setPrefersSpatialAudio(true) // Re-commented due to persistent build error
                 //     print("[AudioSession] Successfully set prefersSpatialAudio.")
                 // } catch {
                 //     print("[AudioSession] FAILED to set prefersSpatialAudio: \(error.localizedDescription)")

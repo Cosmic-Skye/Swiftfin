@@ -102,53 +102,39 @@ class UINativeVideoPlayerViewController: AVPlayerViewController {
     private var itemStatusObserver: NSKeyValueObservation?
     private var avPlayerAudioSelectionGroup: AVMediaSelectionGroup?
     private var cancellables = Set<AnyCancellable>()
+    private var currentPlaybackURL: URL? // Stores the URL of the currently loaded player item
 
     init(manager: VideoPlayerManager) {
-
         self.videoPlayerManager = manager
-
         super.init(nibName: nil, bundle: nil)
 
-        self.showsPlaybackControls = false
-
-        let newPlayer: AVPlayer = .init(url: manager.currentViewModel.playbackURL)
-
-        newPlayer.allowsExternalPlayback = true
-        newPlayer.appliesMediaSelectionCriteriaAutomatically = false
-        newPlayer.currentItem?.externalMetadata = createMetadata()
-        allowsPictureInPicturePlayback = true
-
-        rateObserver = newPlayer.observe(\.rate, options: .new) { _, change in
-            guard let newValue = change.newValue else { return }
-            self.videoPlayerManager.onStateUpdated(newState: newValue == 0 ? .paused : .playing)
+        // Initial player setup
+        if let initialViewModel = manager.currentViewModel {
+            setupPlayer(with: initialViewModel)
+        } else {
+            // This case should ideally not happen if the player is presented with a valid view model.
+            // Handle gracefully, perhaps by showing a loading state or an error.
+            print("[NativePlayer] Error: Initial currentViewModel is nil. Player cannot be set up.")
         }
 
-        let time = CMTime(seconds: 0.1, preferredTimescale: 1000)
-        timeObserverToken = newPlayer.addPeriodicTimeObserver(forInterval: time, queue: .main) { [weak self] time in
-            guard let self else { return }
-            if time.seconds >= 0 {
-                let newSeconds = Int(time.seconds)
-                self.videoPlayerManager.currentProgressHandler.updatePlayerTime(
-                    newSeconds: newSeconds,
-                    totalDuration: self.videoPlayerManager.currentViewModel.item.runTimeSeconds
-                )
-            }
-        }
-
-        itemStatusObserver = newPlayer.currentItem?
-            .observe(\.status, options: [.new, .initial]) { [weak self] playerItem, _ in
+        // Subscribe to changes in currentViewModel to re-initialize player if URL changes
+        videoPlayerManager.$currentViewModel
+            .compactMap { $0 } // Ensure we only proceed if viewModel is not nil
+            .sink { [weak self] newViewModel in
                 guard let self = self else { return }
-                if playerItem.status == .readyToPlay {
-                    self.loadAndReportPlayerAudioOptions()
-                    self.applyQualityLevelPreferences(self.videoPlayerManager.selectedQualityLevel)
-                    if let initiallySelectedStream = self.videoPlayerManager.selectedAudioStream {
-                        self.selectAudioStream(initiallySelectedStream)
-                    }
+                // Check if the HLS URL has actually changed, or if the player is not yet set up for the current URL
+                if self.currentPlaybackURL != newViewModel.hlsPlaybackURL || self.player == nil {
+                    print("[NativePlayer] currentViewModel changed or player needs setup. New URL: \(newViewModel.hlsPlaybackURL)")
+                    self.setupPlayer(with: newViewModel)
+                } else {
+                    print(
+                        "[NativePlayer] currentViewModel changed, but playback URL is the same (\(newViewModel.hlsPlaybackURL)). No player re-initialization needed from this sink."
+                    )
                 }
             }
+            .store(in: &cancellables) // Store this subscription
 
-        player = newPlayer
-
+        // Action Subscriptions (remain here as they are tied to the manager, not a specific player instance)
         videoPlayerManager.selectAudioStreamAction
             .sink { [weak self] streamToSelect in
                 self?.selectAudioStream(streamToSelect)
@@ -204,8 +190,190 @@ class UINativeVideoPlayerViewController: AVPlayerViewController {
     }
 
     deinit {
-        cancellables.forEach { $0.cancel() }
+        cleanupPlayer() // Ensure all resources are released
+        cancellables.forEach { $0.cancel() } // Cancel Combine subscriptions
+    }
+
+    private func cleanupPlayer() {
+        print("[NativePlayer] cleanupPlayer called.")
+        // Invalidate KVO observers
+        rateObserver?.invalidate()
+        rateObserver = nil
         itemStatusObserver?.invalidate()
+        itemStatusObserver = nil
+
+        // Remove periodic time observer
+        if let token = timeObserverToken {
+            player?.removeTimeObserver(token)
+            timeObserverToken = nil
+        }
+
+        // Nil out player and related properties
+        player?.pause() // Pause before nilling out
+        player = nil
+        currentPlaybackURL = nil
+        avPlayerAudioSelectionGroup = nil
+        // availablePlayerAudioOptions and selectedPlayerAudioOption are managed by VideoPlayerManager,
+        // but good to reset local state if any was directly tied to player item.
+        // For now, they are updated via loadAndReportPlayerAudioOptions which is called on new item.
+    }
+
+    private func setupPlayer(with viewModel: VideoPlayerViewModel) {
+        print("[NativePlayer] setupPlayer called with URL: \(viewModel.hlsPlaybackURL)")
+        // Only proceed if the URL has changed OR if the player is currently nil (needs initial setup)
+        guard currentPlaybackURL != viewModel.hlsPlaybackURL || self.player == nil else {
+            print(
+                "[NativePlayer] Playback URL is the same (\(viewModel.hlsPlaybackURL)) and player instance exists. Skipping redundant setup."
+            )
+            return
+        }
+
+        cleanupPlayer() // Clean up any existing player instance first
+
+        self.showsPlaybackControls = false // This is an AVPlayerViewController property
+
+        let newPlayer = AVPlayer(url: viewModel.hlsPlaybackURL)
+        self.currentPlaybackURL = viewModel.hlsPlaybackURL // Store the URL for this player instance
+
+        newPlayer.allowsExternalPlayback = true
+        newPlayer.appliesMediaSelectionCriteriaAutomatically = false // We handle selection
+        newPlayer.currentItem?.externalMetadata = createMetadata() // For Now Playing info
+        allowsPictureInPicturePlayback = true // AVPlayerViewController property
+
+        // Setup KVO for player rate (play/pause state)
+        rateObserver = newPlayer.observe(\.rate, options: .new) { [weak self] _, change in
+            guard let self = self, let newValue = change.newValue else { return }
+            self.videoPlayerManager.onStateUpdated(newState: newValue == 0 ? .paused : .playing)
+        }
+
+        // Setup periodic time observer for progress updates
+        let timeInterval = CMTime(seconds: 0.1, preferredTimescale: 1000)
+        timeObserverToken = newPlayer.addPeriodicTimeObserver(forInterval: timeInterval, queue: .main) { [weak self] time in
+            guard let self = self, let currentVM = self.videoPlayerManager.currentViewModel else { return }
+            if time.seconds >= 0 {
+                let newSeconds = Int(time.seconds)
+                self.videoPlayerManager.currentProgressHandler.updatePlayerTime(
+                    newSeconds: newSeconds,
+                    totalDuration: currentVM.item.runTimeSeconds
+                )
+            }
+        }
+
+        // Setup KVO for player item status (readyToPlay, failed, etc.)
+        itemStatusObserver = newPlayer.currentItem?.observe(\.status, options: [.new, .initial]) { [weak self] playerItem, _ in
+            guard let self = self else { return }
+            switch playerItem.status {
+            case .readyToPlay:
+                print("[NativePlayer] PlayerItem status: readyToPlay")
+                self.loadAndReportPlayerAudioOptions() // Load audio options from the new item
+                self.applyQualityLevelPreferences(self.videoPlayerManager.selectedQualityLevel)
+                if #available(iOS 15.0, *) {
+                    playerItem.allowedAudioSpatializationFormats = .monoStereoAndMultichannel
+                }
+                // Log track details (as before)
+                print("[AVPlayerItem Track Details]")
+                for (trackIndex, track) in playerItem.tracks.enumerated() {
+                    print("  Track \(trackIndex + 1):")
+                    print("    AVPlayerItemTrack isEnabled: \(track.isEnabled)")
+                    if let assetTrack = track.assetTrack {
+                        print("    AssetTrack available: true")
+                        print("    AssetTrack ID: \(assetTrack.trackID)")
+                        print("    AssetTrack mediaType: \(assetTrack.mediaType.rawValue)")
+                        print("    AssetTrack isPlayable: \(assetTrack.isPlayable)")
+                        print("    AssetTrack isEnabled: \(assetTrack.isEnabled)")
+                        print("    AssetTrack naturalSize: \(assetTrack.naturalSize)")
+                        print("    AssetTrack preferredTransform: \(assetTrack.preferredTransform)")
+                        print("    AssetTrack preferredVolume: \(assetTrack.preferredVolume)")
+                        print("    AssetTrack estimatedDataRate: \(assetTrack.estimatedDataRate)")
+                        print("    AssetTrack totalSampleDataLength: \(assetTrack.totalSampleDataLength)")
+
+                        let formatDescriptions = assetTrack.formatDescriptions
+                        print("    Format Descriptions Array Count: \(formatDescriptions.count)")
+                        if formatDescriptions.isEmpty {
+                            print("    Detailed Format Descriptions: EMPTY_ARRAY (assetTrack.formatDescriptions was empty)")
+                            print("    AssetTrack Common Metadata (Fallback):")
+                            for metadataItem in assetTrack.commonMetadata {
+                                if let commonKey = metadataItem.commonKey?.rawValue {
+                                    print("      \(commonKey): \(metadataItem.value?.description ?? "N/A")")
+                                } else if let keyString = metadataItem.key as? String {
+                                    print("      \(keyString): \(metadataItem.value?.description ?? "N/A")")
+                                } else {
+                                    print(
+                                        "      Unknown Key (\(metadataItem.key?.description ?? "No Key")): \(metadataItem.value?.description ?? "N/A")"
+                                    )
+                                }
+                            }
+                        } else {
+                            print("    Format Descriptions (\(formatDescriptions.count)):")
+                            // ... (existing detailed format description logging) ...
+                            for (i, desc) in formatDescriptions.enumerated() {
+                                let formatDesc = desc as! CMFormatDescription
+                                print("      Desc \(i):")
+                                let mediaType = CMFormatDescriptionGetMediaType(formatDesc)
+                                if mediaType == kCMMediaType_Audio {
+                                    let asbd = CMAudioFormatDescriptionGetStreamBasicDescription(formatDesc)
+                                    if let asbdPtr = asbd {
+                                        let formatID = asbdPtr.pointee.mFormatID
+                                        let formatIDHex = String(format: "0x%08x", formatID)
+                                        print("        MediaType: Audio")
+                                        print("        Format ID: \(formatIDHex) ('\(self.fourCharCodeToString(formatID))')")
+                                        print("        Channels Per Frame: \(asbdPtr.pointee.mChannelsPerFrame)")
+                                        if let layoutPtr = CMAudioFormatDescriptionGetChannelLayout(formatDesc, sizeOut: nil) {
+                                            print(
+                                                "        Channel Layout Tag: \(layoutPtr.pointee.mChannelLayoutTag) (\(String(format: "0x%08x", layoutPtr.pointee.mChannelLayoutTag)))"
+                                            )
+                                        } else {
+                                            print("        Channel Layout Tag: N/A")
+                                        }
+                                    } else {
+                                        print("        Could not get ASBD for audio format description.")
+                                    }
+                                } else if mediaType == kCMMediaType_Video {
+                                    let dimensions = CMVideoFormatDescriptionGetDimensions(formatDesc)
+                                    print("        MediaType: Video")
+                                    print("        Dimensions: \(dimensions.width)x\(dimensions.height)")
+                                    print("        Codec: '\(self.fourCharCodeToString(CMFormatDescriptionGetMediaSubType(formatDesc)))'")
+                                } else if mediaType == kCMMediaType_Subtitle {
+                                    print("        MediaType: Subtitle")
+                                    print("        Codec: '\(self.fourCharCodeToString(CMFormatDescriptionGetMediaSubType(formatDesc)))'")
+                                } else if mediaType == kCMMediaType_Text {
+                                    print("        MediaType: Text")
+                                    print("        Codec: '\(self.fourCharCodeToString(CMFormatDescriptionGetMediaSubType(formatDesc)))'")
+                                } else {
+                                    print(
+                                        "        Unknown MediaType: '\(self.fourCharCodeToString(mediaType))' (Subtype: '\(self.fourCharCodeToString(CMFormatDescriptionGetMediaSubType(formatDesc)))')"
+                                    )
+                                }
+                            }
+                        }
+                    } else {
+                        print("    AssetTrack available: false (track.assetTrack is nil)")
+                    }
+                }
+
+                // Auto-select the audio stream designated by the ViewModel (which might be from user selection or default)
+                if let initiallySelectedStream = self.videoPlayerManager.selectedAudioStream {
+                    print(
+                        "[NativePlayer] ReadyToPlay: Attempting to select initial/designated audio stream: \(initiallySelectedStream.displayTitle ?? "N/A") (Index: \(initiallySelectedStream.index ?? -1))"
+                    )
+                    self.selectAudioStream(initiallySelectedStream)
+                }
+            // Consider auto-play after seek from viewDidAppear or directly here if not resuming
+            // For now, play() is called from viewDidAppear's seek completion.
+            case .failed:
+                print("[NativePlayer] PlayerItem status: failed. Error: \(playerItem.error?.localizedDescription ?? "Unknown error")")
+            // Handle error appropriately (e.g., show alert, report to manager)
+            case .unknown:
+                print("[NativePlayer] PlayerItem status: unknown.")
+            @unknown default:
+                print("[NativePlayer] PlayerItem status: new unhandled case.")
+            }
+        }
+        self.player = newPlayer // Assign the new player to the AVPlayerViewController's player property
+
+        // If resuming, viewDidAppear will handle seek & play.
+        // If starting fresh, we might need to call play() here or after item is ready.
+        // For now, let's assume viewDidAppear handles the initial play after seek.
     }
 
     private func loadAndReportPlayerAudioOptions() {
@@ -219,7 +387,7 @@ class UINativeVideoPlayerViewController: AVPlayerViewController {
             videoPlayerManager.updatePlayerAudioOptions(
                 options: group.options,
                 group: group,
-                selectedOption: item.selectedMediaOption(in: group)
+                selectedOption: item.currentMediaSelection.selectedMediaOption(in: group)
             )
         } else {
             videoPlayerManager.updatePlayerAudioOptions(options: [], group: nil, selectedOption: nil)
@@ -252,6 +420,18 @@ class UINativeVideoPlayerViewController: AVPlayerViewController {
     }
 
     private func matchAndSelectAudioOption(for stream: JellyfinAPI.MediaStream, in group: AVMediaSelectionGroup) {
+        print("[NativePlayer] matchAndSelectAudioOption called.")
+        print("  Attempting to select JellyfinAPI.MediaStream:")
+        print(
+            "    Index: \(stream.index ?? -1), Display: \(stream.displayTitle ?? "N/A"), Codec: \(stream.codec ?? "N/A"), Lang: \(stream.language ?? "N/A")"
+        )
+        print("  AVMediaSelectionGroup has \(group.options.count) options available in current HLS stream:")
+        for (idx, opt) in group.options.enumerated() {
+            print(
+                "    Option \(idx + 1): DisplayName: '\(opt.displayName)', Language: '\(opt.extendedLanguageTag ?? "N/A")', MediaType: '\(opt.mediaType.rawValue)'"
+            )
+        }
+
         var matchedOption: AVMediaSelectionOption? = nil
         if let streamIndex32 = stream.index {
             let streamIndex = Int(streamIndex32)
@@ -296,8 +476,14 @@ class UINativeVideoPlayerViewController: AVPlayerViewController {
         }
 
         if let optionToSelect = matchedOption {
+            print(
+                "  Match found: Will attempt to select AVPlayerOption: DisplayName: '\(optionToSelect.displayName)', Language: '\(optionToSelect.extendedLanguageTag ?? "N/A")'"
+            )
             selectPlayerAudioOption(optionToSelect)
         } else {
+            print(
+                "  No suitable AVMediaSelectionOption found in the current HLS stream for the requested MediaStream (Index: \(stream.index ?? -1), Display: \(stream.displayTitle ?? "N/A"))."
+            )
             // logger.error("Could not find a matching AVMediaSelectionOption for selected MediaStream: \((stream.title ??
             // stream.displayTitle) ?? "Index \(String(describing: stream.index)))")")
             loadAndReportPlayerAudioOptions() // Refresh options if no match, to ensure consistency
@@ -306,12 +492,27 @@ class UINativeVideoPlayerViewController: AVPlayerViewController {
 
     public func selectPlayerAudioOption(_ option: AVMediaSelectionOption) {
         guard let item = player?.currentItem, let group = self.avPlayerAudioSelectionGroup else { return }
-        if item.selectedMediaOption(in: group) == option {
+
+        // Log AVMediaSelectionOption details (simplified)
+        var optionDetails = "[AVMediaSelectionOption Details] Selecting option:\n"
+        optionDetails += "  Display Name: \(option.displayName)\n"
+        optionDetails += "  Extended Language Tag: \(option.extendedLanguageTag ?? "N/A")\n"
+        optionDetails += "  Media Type: \(option.mediaType.rawValue)\n" // Removed optional chaining
+        if #available(iOS 15.0, tvOS 15.0, *) {
+            optionDetails += "  Common Metadata:\n"
+            for metaItem in option.commonMetadata {
+                optionDetails += "    - \(metaItem.commonKey?.rawValue ?? "Unknown key"): \(metaItem.value?.description ?? "N/A")\n"
+            }
+        }
+        // Use your logger here if available, otherwise print
+        print(optionDetails)
+
+        if item.currentMediaSelection.selectedMediaOption(in: group) == option {
             videoPlayerManager.updatePlayerAudioOptions(options: group.options, group: group, selectedOption: option)
             return
         }
         item.select(option, in: group)
-        let currentAVPlayerSelection = item.selectedMediaOption(in: group)
+        let currentAVPlayerSelection = item.currentMediaSelection.selectedMediaOption(in: group)
         videoPlayerManager.updatePlayerAudioOptions(options: group.options, group: group, selectedOption: currentAVPlayerSelection)
     }
 
@@ -351,7 +552,11 @@ class UINativeVideoPlayerViewController: AVPlayerViewController {
             ),
             toleranceBefore: .zero,
             toleranceAfter: .zero,
-            completionHandler: { _ in self.play() }
+            completionHandler: { [weak self] finished in
+                if finished {
+                    self?.play()
+                }
+            }
         )
     }
 
@@ -374,5 +579,18 @@ class UINativeVideoPlayerViewController: AVPlayerViewController {
     private func stop() {
         player?.pause()
         videoPlayerManager.sendStopReport()
+    }
+
+    private func fourCharCodeToString(_ fourCharCode: FourCharCode) -> String {
+        let c1 = Character(UnicodeScalar((fourCharCode >> 24) & 0xFF) ?? " ")
+        let c2 = Character(UnicodeScalar((fourCharCode >> 16) & 0xFF) ?? " ")
+        let c3 = Character(UnicodeScalar((fourCharCode >> 8) & 0xFF) ?? " ")
+        let c4 = Character(UnicodeScalar(fourCharCode & 0xFF) ?? " ")
+        // Filter out non-printable ASCII characters and trim whitespace
+        let chars = [c1, c2, c3, c4].filter { char in
+            guard let scalar = char.unicodeScalars.first else { return false }
+            return scalar.isASCII && (char.isLetter || char.isNumber || char.isPunctuation || char == " ") // Allow space
+        }
+        return String(chars).trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }

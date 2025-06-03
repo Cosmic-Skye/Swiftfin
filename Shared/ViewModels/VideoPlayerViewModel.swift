@@ -56,7 +56,7 @@ final class VideoPlayerViewModel: ViewModel {
             tag: mediaSource.eTag,
             deviceProfileID: nil, // Not previously used, let server infer or use `deviceID`
             playSessionID: playSessionID,
-            segmentContainer: MediaContainer.mp4.rawValue, // As per original
+            segmentContainer: "ts", // Changed from MediaContainer.mp4.rawValue to request M2TS/TS
             segmentLength: nil, // Let server decide
             minSegments: 2, // As per original
             mediaSourceID: mediaSource.id!,
@@ -95,7 +95,7 @@ final class VideoPlayerViewModel: ViewModel {
             transcodingMaxAudioChannels: nil, // Let server/profile decide (use maxAudioChannels instead if that's the new param name)
             cpuCoreLimit: nil, // Let server decide
             liveStreamID: nil, // Not a live stream
-            enableMpegtsM2TsMode: false, // Default to false for HLS fmp4
+            enableMpegtsM2TsMode: true, // Changed to true to see if it affects TS muxing for video
             videoCodec: nil, // Let server choose
             subtitleCodec: nil, // Let server choose or handle via sidecar
             transcodeReasons: nil, // Let server determine

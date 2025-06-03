@@ -236,20 +236,38 @@ class UINativeVideoPlayerViewController: AVPlayerViewController {
         let originalPlaybackURL = viewModel.hlsPlaybackURL // Assuming hlsPlaybackURL is non-optional URL
         let playerItem: AVPlayerItem
 
-        if let customURL = AtmosManifestResourceLoaderDelegate.customURL(from: originalPlaybackURL) {
-            print("[NativePlayer] Using custom URL for Atmos interceptor: \(customURL.absoluteString)")
-            let asset = AVURLAsset(url: customURL)
-            // Set the master playlist URL on the delegate
-            atmosResourceLoaderDelegate.masterPlaylistOriginalURL = originalPlaybackURL
-            asset.resourceLoader.setDelegate(atmosResourceLoaderDelegate, queue: DispatchQueue.main)
-            playerItem = AVPlayerItem(asset: asset)
-        } else {
-            print(
-                "[NativePlayer] Error: Could not create custom URL for Atmos playback from URL: \(originalPlaybackURL.absoluteString). Falling back to direct playback."
-            )
-            let asset = AVURLAsset(url: originalPlaybackURL)
-            playerItem = AVPlayerItem(asset: asset)
-        }
+        // Temporarily disabling interceptor for testing direct playback
+        print("[NativePlayer] Atmos interceptor temporarily disabled. Using direct playback.")
+        let asset = AVURLAsset(url: originalPlaybackURL)
+        playerItem = AVPlayerItem(asset: asset)
+        // // Determine if the selected audio stream is likely Atmos
+        // let selectedStream = viewModel.audioStreams.first { $0.index == viewModel.selectedAudioStreamIndex }
+        // let isLikelyAtmos = selectedStream?.profile?.localizedCaseInsensitiveContains("atmos") == true ||
+        //     selectedStream?.codec?.localizedCaseInsensitiveContains("joc") == true || // JOC in codec
+        //     selectedStream?.displayTitle?.localizedCaseInsensitiveContains("atmos") == true // Atmos in display title
+
+        // if isLikelyAtmos, let customURL = AtmosManifestResourceLoaderDelegate.customURL(from: originalPlaybackURL) {
+        //     print("[NativePlayer] Selected audio stream appears to be Atmos. Using custom URL for interceptor:
+        //     \(customURL.absoluteString)")
+        //     atmosResourceLoaderDelegate.masterPlaylistOriginalURL = originalPlaybackURL
+        //     let asset = AVURLAsset(url: customURL)
+        //     asset.resourceLoader.setDelegate(atmosResourceLoaderDelegate, queue: DispatchQueue.main)
+        //     playerItem = AVPlayerItem(asset: asset)
+        // } else {
+        //     if isLikelyAtmos { // customURL creation must have failed if isLikelyAtmos is true but we are in else
+        //         print(
+        //             "[NativePlayer] Error: Could not create custom URL for Atmos stream (\(originalPlaybackURL.absoluteString)). Falling
+        //             back to direct playback."
+        //         )
+        //     } else {
+        //         print(
+        //             "[NativePlayer] Selected audio stream (\(selectedStream?.displayTitle ?? "Unknown")) does not appear to be Atmos.
+        //             Using direct playback."
+        //         )
+        //     }
+        //     let asset = AVURLAsset(url: originalPlaybackURL)
+        //     playerItem = AVPlayerItem(asset: asset)
+        // }
 
         let newPlayer = AVPlayer(playerItem: playerItem)
         self.currentPlaybackURL = originalPlaybackURL // Store the original URL for comparison logic

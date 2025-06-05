@@ -17,23 +17,12 @@ struct IOSBottomBarView: View {
     @EnvironmentObject
     var currentProgressHandler: VideoPlayerManager.CurrentProgressHandler
 
-    // Bindings for menu presentation, passed to IOSBarActionButtons
-    @Binding
-    var isPresentingAudioMenu: Bool
-    @Binding
-    var isPresentingQualityMenu: Bool
-
     // @EnvironmentObject var overlayTimer: TimerProxy // If auto-hide is needed
+    // Bindings for isPresentingAudioMenu and isPresentingQualityMenu are removed
+    // as IOSBarActionButtons now handles its own popover presentation state.
 
     var body: some View {
         VStack(spacing: 8) {
-            // Title
-            Text(viewModel.item.displayTitle)
-                .font(.headline)
-                .foregroundColor(.white)
-                .lineLimit(1)
-                .padding(.horizontal)
-
             // Scrubber
             // Using standard SwiftUI Slider.
             SwiftUI.Slider(
@@ -64,13 +53,10 @@ struct IOSBottomBarView: View {
 
                 Spacer()
 
-                IOSBarActionButtons(
-                    isPresentingAudioMenu: $isPresentingAudioMenu,
-                    isPresentingQualityMenu: $isPresentingQualityMenu
-                )
-                // Ensure environment objects are passed if not inherited automatically
-                .environmentObject(videoPlayerManager)
-                    .environmentObject(viewModel)
+                IOSBarActionButtons()
+                    // Ensure environment objects are passed if not inherited automatically
+                        .environmentObject(videoPlayerManager)
+                        .environmentObject(viewModel)
 
                 Spacer()
 

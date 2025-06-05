@@ -19,11 +19,12 @@ struct IOSBarActionButtons: View {
     @EnvironmentObject
     var viewModel: VideoPlayerViewModel // Assuming this is in the environment
 
-    // Bindings to control presentation of new menus, passed from parent
-    @Binding
-    var isPresentingAudioMenu: Bool
-    @Binding
-    var isPresentingQualityMenu: Bool
+    // Local states for popover presentation
+    @State
+    private var showAudioPopover = false
+    @State
+    private var showQualityPopover = false
+    // The @Binding properties for isPresentingAudioMenu and isPresentingQualityMenu are no longer needed from parent.
     // Binding for other potential menus (e.g., chapters, subtitles)
     // @Binding var isPresentingChaptersMenu: Bool
     // @Binding var isPresentingSubtitlesMenu: Bool
@@ -84,23 +85,36 @@ struct IOSBarActionButtons: View {
             Spacer() // Pushes specific media controls (audio, quality, etc.) to the right
 
             // Audio Tracks Button
-            if !videoPlayerManager.availableAudioStreams.isEmpty { // Changed to availableAudioStreams
+            if !videoPlayerManager.availableAudioStreams.isEmpty {
                 Button {
-                    isPresentingAudioMenu = true
+                    showAudioPopover = true
                 } label: {
                     Image(systemName: "speaker.wave.2.circle")
                 }
                 .accessibilityLabel("Audio Tracks")
+                .popover(isPresented: $showAudioPopover, attachmentAnchor: .rect(.bounds), arrowEdge: .bottom) {
+                    // Pass the binding to the menu view so it can dismiss itself
+                    IOSAudioSelectionMenuView(videoPlayerManager: videoPlayerManager, isPresented: $showAudioPopover)
+                        .environmentObject(videoPlayerManager)
+                        .environmentObject(viewModel)
+                        .frame(width: 280, height: 320) // Constrain width and height
+                }
             }
 
             // Video Quality Button
             if !videoPlayerManager.availableQualityLevels.isEmpty {
                 Button {
-                    isPresentingQualityMenu = true
+                    showQualityPopover = true
                 } label: {
                     Image(systemName: "dial.low")
                 }
                 .accessibilityLabel("Video Quality")
+                .popover(isPresented: $showQualityPopover, attachmentAnchor: .rect(.bounds), arrowEdge: .bottom) {
+                    IOSQualitySelectionMenuView(videoPlayerManager: videoPlayerManager, isPresented: $showQualityPopover)
+                        .environmentObject(videoPlayerManager)
+                        .environmentObject(viewModel)
+                        .frame(width: 280, height: 320) // Constrain width and height
+                }
             }
 
             // Example: Chapters Button

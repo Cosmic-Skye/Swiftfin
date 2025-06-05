@@ -49,24 +49,19 @@ struct NativeVideoPlayer: View {
 
             if isPresentingOverlay && videoPlayerManager.currentViewModel != nil {
                 VStack { // Main VStack for the overlay
+                    IOSTopBarView(dismissAction: {
+                        router.dismissCoordinator()
+                    })
                     Spacer() // Pushes the bottom bar to the bottom
-                    IOSBottomBarView(
-                        isPresentingAudioMenu: $isPresentingAudioMenu,
-                        isPresentingQualityMenu: $isPresentingQualityMenu
-                    )
-                    .environmentObject(videoPlayerManager)
-                    .environmentObject(videoPlayerManager.currentViewModel!)
-                    .environmentObject(videoPlayerManager.currentProgressHandler)
+                    IOSBottomBarView()
+                        .environmentObject(videoPlayerManager)
+                        .environmentObject(videoPlayerManager.currentViewModel!)
+                        .environmentObject(videoPlayerManager.currentProgressHandler)
                 }
-                .transition(.opacity.combined(with: .move(edge: .bottom)))
+                .transition(.opacity) // Changed transition for a more neutral fade for both bars
             }
         }
-        .sheet(isPresented: $isPresentingAudioMenu) {
-            IOSAudioSelectionMenuView(videoPlayerManager: videoPlayerManager, isPresented: $isPresentingAudioMenu)
-        }
-        .sheet(isPresented: $isPresentingQualityMenu) {
-            IOSQualitySelectionMenuView(videoPlayerManager: videoPlayerManager, isPresented: $isPresentingQualityMenu)
-        }
+        // .sheet modifiers removed as popovers are now handled in IOSBarActionButtons
         .navigationBarHidden()
         .statusBarHidden()
         .ignoresSafeArea()
@@ -76,10 +71,8 @@ struct NativeVideoPlayer: View {
         }
     }
 
-    @State
-    private var isPresentingAudioMenu: Bool = false
-    @State
-    private var isPresentingQualityMenu: Bool = false
+    // @State private var isPresentingAudioMenu: Bool = false // Removed
+    // @State private var isPresentingQualityMenu: Bool = false // Removed
 }
 
 struct NativeVideoPlayerView: UIViewControllerRepresentable {
@@ -535,12 +528,56 @@ class UINativeVideoPlayerViewController: AVPlayerViewController {
     }
 
     override func viewWillDisappear(_ animated: Bool) {
-        super.viewWillDisappear(animated)
-        stop()
-        if let timeObserverToken = self.timeObserverToken {
-            player?.removeTimeObserver(timeObserverToken)
-            self.timeObserverToken = nil
+        print("[NativePlayer] viewWillDisappear - Aggressive cleanup. Current player: \(String(describing: player))")
+
+        // Hold a reference to the player that was active when this method was called.
+        let playerInstanceBeforeCleanup = self.player
+
+        if let activePlayer = playerInstanceBeforeCleanup {
+            // 1. Pause the active player
+            activePlayer.pause()
+            print("[NativePlayer] Paused active player instance.")
+
+            // 2. Send stop report for the active session
+            videoPlayerManager.sendStopReport()
+            print("[NativePlayer] Stop report sent for previously active player.")
+
+            // 3. Invalidate KVO observers attached to this specific player instance
+            // These observer properties (rateObserver, itemStatusObserver) belong to `self`.
+            rateObserver?.invalidate()
+            itemStatusObserver?.invalidate()
+            print("[NativePlayer] KVO observers invalidated if they existed.")
+
+            // 4. Remove periodic time observer from this specific player instance
+            if let token = self.timeObserverToken {
+                activePlayer.removeTimeObserver(token)
+                self.timeObserverToken = nil // Nil the token property now
+                print("[NativePlayer] Time observer removed from player instance and token nilled.")
+            }
+        } else {
+            // If player was already nil on entry, ensure our token property is also nil.
+            if self.timeObserverToken != nil {
+                print("[NativePlayer] Player was nil in viewWillDisappear, but timeObserverToken existed. Nilling token.")
+                self.timeObserverToken = nil
+            }
+            // If player was nil, a stop report might still be relevant if it wasn't sent.
+            // Calling videoPlayerManager.sendStopReport() might be okay as it should be idempotent
+            // or handle its own state. For now, assuming if player was nil, it was already stopped.
+            // Alternatively, call self.stop() which checks self.player (now potentially nil).
+            // self.stop() // This would call videoPlayerManager.sendStopReport()
+            print("[NativePlayer] Player was already nil upon entering viewWillDisappear.")
         }
+
+        // 5. Set the AVPlayerViewController's player property to nil.
+        // This is the action that was crashing in deinit. Doing it here unconditionally.
+        if self.player != nil { // Check if it's not already nil (e.g. by another path or concurrent access - unlikely for UI)
+            print("[NativePlayer] viewWillDisappear: Setting self.player to nil.")
+            self.player = nil
+        } else {
+            print("[NativePlayer] viewWillDisappear: self.player was already nil before explicit final assignment attempt.")
+        }
+
+        super.viewWillDisappear(animated) // Call super last, after our state is fully set.
     }
 
     override func viewDidAppear(_ animated: Bool) {

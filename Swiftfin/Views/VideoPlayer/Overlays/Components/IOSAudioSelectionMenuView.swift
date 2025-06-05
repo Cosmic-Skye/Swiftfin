@@ -16,22 +16,22 @@ struct IOSAudioSelectionMenuView: View {
     var isPresented: Bool
 
     var body: some View {
-        NavigationView {
-            VStack(alignment: .leading, spacing: 15) {
-                Text("Select Audio Track")
-                    .font(.headline)
-                    .padding([.top, .leading, .trailing])
+        VStack(alignment: .leading, spacing: 10) { // Reduced spacing for popover
+            Text("Audio Tracks") // Changed title slightly for popover context
+                .font(.headline)
+                .padding(.bottom, 5) // Add some padding below the title
 
-                if videoPlayerManager.availableAudioStreams.isEmpty {
-                    Text("No audio tracks available.")
-                        .foregroundColor(.gray)
-                        .padding()
-                } else {
-                    List {
+            if videoPlayerManager.availableAudioStreams.isEmpty {
+                Text("No audio tracks available.")
+                    .foregroundColor(.gray)
+                    .padding()
+            } else {
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 0) { // Use LazyVStack for performance with many items
                         ForEach(videoPlayerManager.availableAudioStreams, id: \.index) { stream in
                             Button(action: {
                                 videoPlayerManager.selectAudioStream(stream)
-                                isPresented = false
+                                isPresented = false // This will dismiss the popover
                             }) {
                                 HStack {
                                     Text(getDescriptiveStreamName(for: stream))
@@ -44,21 +44,24 @@ struct IOSAudioSelectionMenuView: View {
                                             .foregroundColor(.accentColor)
                                     }
                                 }
+                                .padding(.vertical, 8) // Add some padding to each button row
                             }
+                            Divider() // Add a divider between items
                         }
                     }
                 }
+                // maxHeight constraint removed, will be applied by the caller in popover
             }
-            .navigationTitle("Audio Tracks")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") {
-                        isPresented = false
-                    }
-                }
-            }
+
+            // "Done" button can be part of the VStack if needed, or rely on tap-outside-to-dismiss
+            // For simplicity, relying on tap-outside or selection to dismiss.
+            // If a Done button is essential:
+            // Button("Done") { isPresented = false }
+            //    .padding(.top)
         }
+        .padding() // Add padding around the VStack content
+        // .background(Color(.systemGray6)) // Optional: give popover a distinct background
+        // .cornerRadius(10) // Optional: if background is added
     }
 
     private func getDescriptiveStreamName(for stream: JellyfinAPI.MediaStream) -> String { // Changed MediaStreamInfo to MediaStream

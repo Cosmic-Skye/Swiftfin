@@ -15,22 +15,22 @@ struct IOSQualitySelectionMenuView: View { // Renamed struct
     var isPresented: Bool
 
     var body: some View {
-        NavigationView { // Common for iOS sheet presentation
-            VStack(alignment: .leading, spacing: 15) {
-                Text("Select Video Quality")
-                    .font(.headline)
-                    .padding([.top, .leading, .trailing])
+        VStack(alignment: .leading, spacing: 10) { // Reduced spacing for popover
+            Text("Video Quality") // Changed title slightly for popover context
+                .font(.headline)
+                .padding(.bottom, 5) // Add some padding below the title
 
-                if videoPlayerManager.availableQualityLevels.isEmpty {
-                    Text("No quality levels available.")
-                        .foregroundColor(.gray)
-                        .padding()
-                } else {
-                    List { // Use List for iOS style
+            if videoPlayerManager.availableQualityLevels.isEmpty {
+                Text("No quality levels available.")
+                    .foregroundColor(.gray)
+                    .padding()
+            } else {
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 0) {
                         ForEach(videoPlayerManager.availableQualityLevels, id: \.id) { qualityLevel in
                             Button(action: {
                                 videoPlayerManager.selectQualityLevel(qualityLevel)
-                                isPresented = false
+                                isPresented = false // This will dismiss the popover
                             }) {
                                 HStack {
                                     Text(qualityLevel.name)
@@ -41,20 +41,15 @@ struct IOSQualitySelectionMenuView: View { // Renamed struct
                                             .foregroundColor(.accentColor)
                                     }
                                 }
+                                .padding(.vertical, 8) // Add some padding to each button row
                             }
+                            Divider() // Add a divider between items
                         }
                     }
                 }
-            }
-            .navigationTitle("Video Quality")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") {
-                        isPresented = false
-                    }
-                }
+                // maxHeight constraint removed, will be applied by the caller in popover
             }
         }
+        .padding() // Add padding around the VStack content
     }
 }

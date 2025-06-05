@@ -1257,6 +1257,7 @@
 		E49A5FFE2DED980500478725 /* IOSAudioSelectionMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E49A5FFB2DED980500478725 /* IOSAudioSelectionMenuView.swift */; };
 		E49A60012DED996600478725 /* IOSBarActionButtons.swift in Sources */ = {isa = PBXBuildFile; fileRef = E49A5FFF2DED996600478725 /* IOSBarActionButtons.swift */; };
 		E49A60022DED996600478725 /* IOSBottomBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E49A60002DED996600478725 /* IOSBottomBarView.swift */; };
+		E4D7515E2DF136E100C95301 /* IOSTopBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4D7515D2DF136E100C95301 /* IOSTopBarView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -2148,6 +2149,7 @@
 		E49A5FFC2DED980500478725 /* IOSQualitySelectionMenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSQualitySelectionMenuView.swift; sourceTree = "<group>"; };
 		E49A5FFF2DED996600478725 /* IOSBarActionButtons.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSBarActionButtons.swift; sourceTree = "<group>"; };
 		E49A60002DED996600478725 /* IOSBottomBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSBottomBarView.swift; sourceTree = "<group>"; };
+		E4D7515D2DF136E100C95301 /* IOSTopBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSTopBarView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -4388,6 +4390,7 @@
 		E11245B528D97EC200D8A977 /* Components */ = {
 			isa = PBXGroup;
 			children = (
+				E4D7515D2DF136E100C95301 /* IOSTopBarView.swift */,
 				E49A5FFF2DED996600478725 /* IOSBarActionButtons.swift */,
 				E49A60002DED996600478725 /* IOSBottomBarView.swift */,
 				E49A5FFB2DED980500478725 /* IOSAudioSelectionMenuView.swift */,
@@ -6535,6 +6538,7 @@
 				E1A3E4C92BB74EA3005C59F8 /* LoadingCard.swift in Sources */,
 				4E71D6892C80910900A0174D /* EditCustomDeviceProfileView.swift in Sources */,
 				E1E1E24D28DF8A2E000DF5FD /* PreferenceKeys.swift in Sources */,
+				E4D7515E2DF136E100C95301 /* IOSTopBarView.swift in Sources */,
 				E1C812BC277A8E5D00918266 /* PlaybackSpeed.swift in Sources */,
 				E15756322935642A00976E1F /* Double.swift in Sources */,
 				4EFD172E2CE4182200A4BAC5 /* LearnMoreButton.swift in Sources */,

@@ -93,11 +93,15 @@ struct IOSBarActionButtons: View {
                 }
                 .accessibilityLabel("Audio Tracks")
                 .popover(isPresented: $showAudioPopover, attachmentAnchor: .rect(.bounds), arrowEdge: .bottom) {
-                    // Pass the binding to the menu view so it can dismiss itself
-                    IOSAudioSelectionMenuView(videoPlayerManager: videoPlayerManager, isPresented: $showAudioPopover)
+                    let menuView = IOSAudioSelectionMenuView(videoPlayerManager: videoPlayerManager, isPresented: $showAudioPopover)
                         .environmentObject(videoPlayerManager)
                         .environmentObject(viewModel)
-                        .frame(width: 280, height: 320) // Constrain width and height
+
+                    if #available(iOS 16.4, *) {
+                        menuView.presentationCompactAdaptation(.popover)
+                    } else {
+                        menuView
+                    }
                 }
             }
 
@@ -110,10 +114,15 @@ struct IOSBarActionButtons: View {
                 }
                 .accessibilityLabel("Video Quality")
                 .popover(isPresented: $showQualityPopover, attachmentAnchor: .rect(.bounds), arrowEdge: .bottom) {
-                    IOSQualitySelectionMenuView(videoPlayerManager: videoPlayerManager, isPresented: $showQualityPopover)
+                    let menuView = IOSQualitySelectionMenuView(videoPlayerManager: videoPlayerManager, isPresented: $showQualityPopover)
                         .environmentObject(videoPlayerManager)
                         .environmentObject(viewModel)
-                        .frame(width: 280, height: 320) // Constrain width and height
+
+                    if #available(iOS 16.4, *) {
+                        menuView.presentationCompactAdaptation(.popover)
+                    } else {
+                        menuView
+                    }
                 }
             }
 

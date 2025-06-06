@@ -16,52 +16,40 @@ struct IOSAudioSelectionMenuView: View {
     var isPresented: Bool
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) { // Reduced spacing for popover
-            Text("Audio Tracks") // Changed title slightly for popover context
+        VStack(alignment: .leading) {
+            Text("Audio Tracks")
                 .font(.headline)
-                .padding(.bottom, 5) // Add some padding below the title
+                .padding(.horizontal)
+                .padding(.top)
 
             if videoPlayerManager.availableAudioStreams.isEmpty {
                 Text("No audio tracks available.")
-                    .foregroundColor(.gray)
+                    .foregroundColor(.secondary)
                     .padding()
             } else {
-                ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 0) { // Use LazyVStack for performance with many items
-                        ForEach(videoPlayerManager.availableAudioStreams, id: \.index) { stream in
-                            Button(action: {
-                                videoPlayerManager.selectAudioStream(stream)
-                                isPresented = false // This will dismiss the popover
-                            }) {
-                                HStack {
-                                    Text(getDescriptiveStreamName(for: stream))
-                                        .foregroundColor(videoPlayerManager.selectedAudioStream?.index == stream
-                                            .index ? .accentColor : .primary
-                                        )
-                                    Spacer()
-                                    if videoPlayerManager.selectedAudioStream?.index == stream.index {
-                                        Image(systemName: "checkmark")
-                                            .foregroundColor(.accentColor)
-                                    }
+                List {
+                    ForEach(videoPlayerManager.availableAudioStreams, id: \.index) { stream in
+                        Button(action: {
+                            videoPlayerManager.selectAudioStream(stream)
+                            isPresented = false
+                        }) {
+                            HStack {
+                                Text(getDescriptiveStreamName(for: stream))
+                                    .foregroundColor(.primary)
+                                Spacer()
+                                if videoPlayerManager.selectedAudioStream?.index == stream.index {
+                                    Image(systemName: "checkmark")
+                                        .foregroundColor(.accentColor)
                                 }
-                                .padding(.vertical, 8) // Add some padding to each button row
                             }
-                            Divider() // Add a divider between items
                         }
+                        .buttonStyle(PlainButtonStyle())
                     }
                 }
-                // maxHeight constraint removed, will be applied by the caller in popover
+                .listStyle(PlainListStyle())
             }
-
-            // "Done" button can be part of the VStack if needed, or rely on tap-outside-to-dismiss
-            // For simplicity, relying on tap-outside or selection to dismiss.
-            // If a Done button is essential:
-            // Button("Done") { isPresented = false }
-            //    .padding(.top)
         }
-        .padding() // Add padding around the VStack content
-        // .background(Color(.systemGray6)) // Optional: give popover a distinct background
-        // .cornerRadius(10) // Optional: if background is added
+        .frame(width: 300, height: 250)
     }
 
     private func getDescriptiveStreamName(for stream: JellyfinAPI.MediaStream) -> String { // Changed MediaStreamInfo to MediaStream

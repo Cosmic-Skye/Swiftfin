@@ -15,41 +15,39 @@ struct IOSQualitySelectionMenuView: View { // Renamed struct
     var isPresented: Bool
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) { // Reduced spacing for popover
-            Text("Video Quality") // Changed title slightly for popover context
+        VStack(alignment: .leading) {
+            Text("Video Quality")
                 .font(.headline)
-                .padding(.bottom, 5) // Add some padding below the title
+                .padding(.horizontal)
+                .padding(.top)
 
             if videoPlayerManager.availableQualityLevels.isEmpty {
                 Text("No quality levels available.")
-                    .foregroundColor(.gray)
+                    .foregroundColor(.secondary)
                     .padding()
             } else {
-                ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 0) {
-                        ForEach(videoPlayerManager.availableQualityLevels, id: \.id) { qualityLevel in
-                            Button(action: {
-                                videoPlayerManager.selectQualityLevel(qualityLevel)
-                                isPresented = false // This will dismiss the popover
-                            }) {
-                                HStack {
-                                    Text(qualityLevel.name)
-                                        .foregroundColor(videoPlayerManager.selectedQualityLevel == qualityLevel ? .accentColor : .primary)
-                                    Spacer()
-                                    if videoPlayerManager.selectedQualityLevel == qualityLevel {
-                                        Image(systemName: "checkmark")
-                                            .foregroundColor(.accentColor)
-                                    }
+                List {
+                    ForEach(videoPlayerManager.availableQualityLevels, id: \.id) { qualityLevel in
+                        Button(action: {
+                            videoPlayerManager.selectQualityLevel(qualityLevel)
+                            isPresented = false
+                        }) {
+                            HStack {
+                                Text(qualityLevel.name)
+                                    .foregroundColor(.primary)
+                                Spacer()
+                                if videoPlayerManager.selectedQualityLevel == qualityLevel {
+                                    Image(systemName: "checkmark")
+                                        .foregroundColor(.accentColor)
                                 }
-                                .padding(.vertical, 8) // Add some padding to each button row
                             }
-                            Divider() // Add a divider between items
                         }
+                        .buttonStyle(PlainButtonStyle())
                     }
                 }
-                // maxHeight constraint removed, will be applied by the caller in popover
+                .listStyle(PlainListStyle())
             }
         }
-        .padding() // Add padding around the VStack content
+        .frame(width: 300, height: 200)
     }
 }
